@@ -37,9 +37,9 @@ display = do
     --clears out the graphics color state
     GLUT.clear [ GLUT.ColorBuffer ]
     (GL.Size x y) <- GLUT.get GLUT.windowSize
-    arr <- newArray [0.111,0.222,0.333,0.444,0.555,0.666,0.777,0.888,0.999,0.555] :: IO (Ptr Float)
+    arr <- newArray (replicate 2500 0.555) :: IO (Ptr Float)
     --arr <- FMU.new (VS.replicate 100 (1 :: Float))
-    GL.drawPixels (GL.Size 5 2) (PixelData GL.RGBA GL.Float arr)
+    GL.drawPixels (GL.Size 50 50) (PixelData GL.RGBA GL.Float arr)
     --GL.drawPixels size undefined
     --pushes our OpenGL commands down to the systems graphics for display
     GLUT.flush
