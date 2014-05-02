@@ -5,12 +5,12 @@
 -}
 {-# LANGUAGE ForeignFunctionInterface #-}
 import Foreign
+import qualified Foreign.Marshal.Utils as FMU
+import qualified Data.Vector.Storable as VS
 import qualified Graphics.UI.GLUT as GLUT
 import qualified Graphics.Rendering.OpenGL as GL
 import Graphics.Rendering.OpenGL.GL.PixelRectangles.Rasterization
 import qualified Control.Monad.ST as STM
-import qualified Data.Array.ST as ST
-import qualified Data.Array.Unboxed as STU
 import Data.List
 import Data.Ord
 import Data.Map (Map)
@@ -36,9 +36,10 @@ display :: GLUT.DisplayCallback
 display = do
     --clears out the graphics color state
     GLUT.clear [ GLUT.ColorBuffer ]
-    size <- GLUT.get GLUT.windowSize
-    arr <- newArray ([1..100] :: (Enum a, Storable a) => [a])
-    GL.drawPixels size (PixelData GL.RGBA GL.Float arr)
+    (GL.Size x y) <- GLUT.get GLUT.windowSize
+    arr <- newArray [0.111,0.222,0.333,0.444,0.555,0.666,0.777,0.888,0.999,0.555] :: IO (Ptr Float)
+    --arr <- FMU.new (VS.replicate 100 (1 :: Float))
+    GL.drawPixels (GL.Size 5 2) (PixelData GL.RGBA GL.Float arr)
     --GL.drawPixels size undefined
     --pushes our OpenGL commands down to the systems graphics for display
     GLUT.flush

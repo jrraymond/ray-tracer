@@ -64,7 +64,9 @@ executable ray-tracer
                        containers >= 0.5.0.0,
                        array >= 0.4.0.1,
                        OpenGL >= 2.8.0.0,
-                       GLUT >= 2.4.0.0
+                       GLUT >= 2.4.0.0,
+                       vector >= 0.10.0.1
+          
                        
   
   -- Directories containing source files.
