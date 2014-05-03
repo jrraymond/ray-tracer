@@ -24,7 +24,7 @@ module Surfaces
   data Shape = Sphere Pt3 Float 
                | Triangle Pt3 Pt3 Pt3 
                | Plane Pt3 Pt3 Pt3 
-               | Box Pt3 Pt3 Pt3 Pt3 Pt3 Pt3 Pt3 Pt3
+               | Box Pt3 Pt3 Pt3 Pt3 Pt3 Pt3
 
 
   intersect :: Ray3 -> Surface -> Maybe HitRec
@@ -43,5 +43,15 @@ module Surfaces
     pt = add (multiply dir t) base
     n = normalize $ subt pt center
     hitRec = if discriminant <= 0 || t < 0 then Nothing else Just (HitRec (pt , n , t)) 
+  intersect (Ray3 ((bx,by,bz),(dx,dy,dz))) (Box l r b t n f) 
+    | t_x0 > t_y1 || t_x0 > t_z1 || t_x1 < t_y0 || t_x1 < t_z0 ||
+      t_y0 > t_z1 || t_y1 < t_z0  = Nothing
+    | otherwise = Just (HitRec ((0,0,0),(0,0,0),0))  where
+    (t_x0,t_x1) = if dx >= 0 then ((l - bx) / dx , (r - bx) / dx) 
+                             else ((r - bx) / dx , (l - bx) / dx)
+    (t_y0,t_y1) = if dy >= 0 then ((b - by) / dy , (t - by) / dy)
+                             else ((t - by) / dy , (b - by) / dy)
+    (t_z0,t_z1) = if dz >= 0 then ((n - bz) / dz , (n - bz) / dz)
+                             else ((f - bz) / dz , (f - bz) / dz)
 
 
