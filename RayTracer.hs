@@ -8,7 +8,7 @@ module RayTracer (render,flatten) where
 
   type Width = Int
   type Height = Int
-  type Color = (Float , Float , Float)
+  --type Color = (Float , Float , Float)
 
   data World = World { imgDim :: (Width,Height),
                        viewPlane :: (Width,Height,Float),
@@ -33,17 +33,25 @@ module RayTracer (render,flatten) where
   --  | otherwise = map (rayTrace world) $ map (getRay world) pixels where
     = map (rayTrace world) $ map (getRay world) pixels where
     pixels = [ (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
-    eye = (4,4,4)
+    --eye = (4,4,4)
+    eye = (25, 2, 25)
     lookAt = (-1,-1,-1)
     up = (0,1,0)
     w = normalize $ subt eye lookAt
     u = normalize $ cross up w
     v = cross w u
-    world = World { imgDim = (800,600), viewPlane = (8,6,1),
+    sfcs = [ Sphere (0, 0, 0) 1 (0.5, 0.2, 0.5)
+           , Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) (0.6, 0.6, 0.6)
+           , Triangle (-10, -1, -10) (10, -1, -10) (-10, 5, -10) (1, 215/255, 0)
+           , Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) (1, 215/255, 0)
+           , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) (1, 215/255, 0)
+           , Triangle (-10, -1, -10) (-10, 5, 10) (-10, -1, 10) (1, 215/255, 0)
+           ]
+    world = World { imgDim = (800,600), viewPlane = (8,6,7),
                     camera = (u,v,w),
                     eye = eye,
                     lookAt = lookAt,
-                    surfaces = [Sphere (0,0,0) 1]
+                    surfaces = sfcs--[Sphere (0,0,0) 1]
                   }
   
   flatten :: [(Float,Float,Float)] -> [Float]
@@ -56,7 +64,7 @@ module RayTracer (render,flatten) where
     intersection = mconcat $ map (intersect ray) surfaces
     color = case intersection of
               Nothing -> (0,0,0)
-              Just hr -> (1,1,1) -- if trace (show hr) False then (1,1,1) else (1,1,1)
+              Just (HitRec (_, _, _, c)) -> c--(1,1,1) -- if trace (show hr) False then (1,1,1) else (1,1,1)
   
   getRay :: World -> (Int,Int) -> Ray3
   getRay world pixel_coords 
