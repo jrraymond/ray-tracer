@@ -23,7 +23,7 @@ import RayTracer
 main :: IO ()
 main = do 
     --for debuggin purposes draw a ppm
-    writePPM "output.ppm" 400 400 (render 400 400)
+    writePPM "output.ppm" 80 60 (render 80 60)
     --initialize OpenGL systems
     (_progName, _args) <- GLUT.getArgsAndInitialize
     --open the main window
@@ -42,20 +42,37 @@ display = do
     --clears out the graphics color state
     GLUT.clear [ GLUT.ColorBuffer ]
     (GL.Size x y) <- GLUT.get GLUT.windowSize
-    let pixels = flatten $ render 400 400
+    let pixels = flatten $ render 80 60
     arr <- newArray pixels :: IO (Ptr Float)
     --arr <- FMU.new (VS.replicate 100 (1 :: Float))
-    GL.drawPixels (GL.Size 400 400) (PixelData GL.RGB GL.Float arr)
+    GL.drawPixels (GL.Size 80 60) (PixelData GL.RGB GL.Float arr)
     --GL.drawPixels size undefined
     --pushes our OpenGL commands down to the systems graphics for display
     GLUT.flush
 
 writePPM :: String -> Int -> Int -> [(Float,Float,Float)] -> IO ()
 writePPM name w h pixels = do writeFile name string  where 
-    toStr :: Float -> String
-    toStr = (++ " ") . show . (255*) . truncate
-    f :: [(Float,Float,Float)] -> String
-    f [] = ""
-    f ((r,g,b):ps) = toStr r ++ toStr g ++ toStr b ++ f ps
-    string = "P3\n" ++ show w ++ " " ++ show h ++ " 255\n" ++ f pixels
+  toStr :: Float -> String
+  toStr = (++ " ") . show . (255*) . truncate
+  f :: [(Float,Float,Float)] -> String
+  f [] = ""
+  f ((r,g,b):ps) = toStr r ++ toStr g ++ toStr b ++ f ps
+  string = "P3\n" ++ show w ++ " " ++ show h ++ " 255\n" ++ f pixels
 
+save_ppm :: FilePath -> [[(Float,Float,Float)]] -> IO ()
+save_ppm f css = writeFile f $ make_ppm css
+ 
+make_ppm :: [[(Float,Float,Float)]] -> String
+make_ppm css =
+      "P3\n" ++ (show $ length $ head css) ++ " " ++ (show $ length css) ++ " 255\n" ++
+        (unlines $ map unwords $ group' 15 $ map show $ concatMap colour $ concat css)
+         
+group' _ [] = []
+group' n xs =
+      let (xs0,xs1) = splitAt n xs
+            in  xs0 : group' n xs1
+colour :: (Float,Float,Float) -> [Int]             
+colour (r,g,b) = [channel r, channel g, channel b]
+ 
+channel :: Float -> Int
+channel = floor . (255*) . min 1 . max 0

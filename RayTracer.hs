@@ -3,7 +3,7 @@ module RayTracer (render,flatten) where
   import Surfaces
   import Geometry3
   import Data.Monoid
-  --import Debug.Trace
+  import Debug.Trace
 
 
   type Width = Int
@@ -28,15 +28,17 @@ module RayTracer (render,flatten) where
   -}
 
   render :: Width -> Height -> [(Float,Float,Float)]
-  render wd ht = map (rayTrace world) $ map (getRay world) pixels where
+  render wd ht 
+    | trace (show u ++ "|" ++ show v ++ "|" ++ show w) False = undefined
+    | otherwise = map (rayTrace world) $ map (getRay world) pixels where
     pixels = [ (x,y) | x <- [0..(wd-1)], y <- [0..(ht-1)] ]
-    eye = (25,2,25)
+    eye = (4,4,4)
     lookAt = (-1,-1,-1)
     up = (0,1,0)
     w = normalize $ subt eye lookAt
     u = normalize $ cross up w
     v = cross w u
-    world = World { imgDim = (400,400), viewPlane = (8,8,1),
+    world = World { imgDim = (8,6), viewPlane = (8,6,1),
                     camera = (u,v,w),
                     eye = eye,
                     lookAt = lookAt,
@@ -53,10 +55,12 @@ module RayTracer (render,flatten) where
     intersection = mconcat $ map (intersect ray) surfaces
     color = case intersection of
               Nothing -> (0,0,0)
-              Just hr -> (1,1,1) --if trace (show hr) False then (1,1,1) else (1,1,1)
+              Just hr -> if trace (show hr) False then (1,1,1) else (1,1,1)
   
   getRay :: World -> (Int,Int) -> Ray3
-  getRay world pixel_coords = Ray3 (base , dir) where
+  getRay world pixel_coords 
+    | trace ("i:" ++ show i ++ " j: " ++ show j ++ "\t" ++ show u_dir ++ "|" ++ show v_dir ++ "|" ++ show w_dir ++ "\t" ++ show dir) False = undefined
+   | otherwise = Ray3 (base , dir) where
     World { imgDim = img_dim,
             viewPlane = (viewWd',viewHt',viewDist),
             camera = (u,v,w) ,
@@ -70,5 +74,4 @@ module RayTracer (render,flatten) where
     u_dir = multiply u u_world
     v_dir = multiply v v_world
     w_dir = multiply w w_world
-    dir' = add u_dir v_dir
-    dir = add w_dir dir'
+    dir = add w_dir $ add u_dir v_dir
