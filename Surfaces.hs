@@ -20,7 +20,13 @@ module Surfaces
 --  (<>) = mappend
 --  infixr 6 <>
 
-  data Surface = Sphere Pt3 Float
+  data Surface = Bbox Surface Surface Shape | Leaf Shape Material
+  data Shape = Sphere Pt3 Float 
+               | Triangle Pt3 Pt3 Pt3 
+               | Plane Pt3 Pt3 Pt3 
+               | Box Pt3 Pt3 Pt3 Pt3 Pt3 Pt3 Pt3 Pt3
+
+
   intersect :: Ray3 -> Surface -> Maybe HitRec
   intersect (Ray3 (base , dir)) (Sphere center radius) = hitRec where
     ec = subt base center
@@ -36,9 +42,6 @@ module Surfaces
     t = min t_a t_b
     pt = add (multiply dir t) base
     n = normalize $ subt pt center
-    hitRec = if discriminant <= 0 || t < 0
-               then Nothing
-               else Just (HitRec (pt , n , t)) -- if trace (show $ "hit: " ++ show pt ++ " t: " ++ show t) False 
-                  --then Nothing
-                  --else Just (HitRec (pt , n , t))
+    hitRec = if discriminant <= 0 || t < 0 then Nothing else Just (HitRec (pt , n , t)) 
+
 
