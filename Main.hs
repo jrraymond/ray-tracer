@@ -15,10 +15,15 @@ import Data.List
 import Data.Ord
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Geometry3
+import Surfaces
+import RayTracer
 
 
 main :: IO ()
 main = do 
+    --for debuggin purposes draw a ppm
+    writePPM "output.ppm" 400 400 (render 400 400)
     --initialize OpenGL systems
     (_progName, _args) <- GLUT.getArgsAndInitialize
     --open the main window
@@ -37,9 +42,20 @@ display = do
     --clears out the graphics color state
     GLUT.clear [ GLUT.ColorBuffer ]
     (GL.Size x y) <- GLUT.get GLUT.windowSize
-    arr <- newArray (replicate 2500 0.555) :: IO (Ptr Float)
+    let pixels = flatten $ render 400 400
+    arr <- newArray pixels :: IO (Ptr Float)
     --arr <- FMU.new (VS.replicate 100 (1 :: Float))
-    GL.drawPixels (GL.Size 50 50) (PixelData GL.RGBA GL.Float arr)
+    GL.drawPixels (GL.Size 400 400) (PixelData GL.RGB GL.Float arr)
     --GL.drawPixels size undefined
     --pushes our OpenGL commands down to the systems graphics for display
     GLUT.flush
+
+writePPM :: String -> Int -> Int -> [(Float,Float,Float)] -> IO ()
+writePPM name w h pixels = do writeFile name string  where 
+    toStr :: Float -> String
+    toStr = (++ " ") . show . (255*) . truncate
+    f :: [(Float,Float,Float)] -> String
+    f [] = ""
+    f ((r,g,b):ps) = toStr r ++ toStr g ++ toStr b ++ f ps
+    string = "P3\n" ++ show w ++ " " ++ show h ++ " 255\n" ++ f pixels
+
