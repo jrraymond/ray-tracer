@@ -15,7 +15,7 @@ module RayTracer (render,flatten) where
                        camera :: (Vec3,Vec3,Vec3),
                        eye :: Pt3,
                        lookAt :: Pt3,
-                       surfaces :: [Surface]}
+                       surfaces :: [Shape]}
                        --lights :: [Light]} TODO
 
   mapT :: (a -> b) -> (a,a) -> (b,b)
