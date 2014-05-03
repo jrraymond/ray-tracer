@@ -70,3 +70,17 @@ module Surfaces
     hitRec = if beta < 0 || beta > 1 || gamma < 0 || beta+gamma > 1 || t < 0
              then Nothing 
              else Just (HitRec (pt , n , t)) 
+  intersect (Ray3 (base, dir)) (Plane a b c) = hitRec where
+    v1 = subt b a
+    v2 = subt c a
+    n = normalize $ cross v1 v2
+    
+    a_e = subt a base
+
+    t = dot a_e n / dot dir n
+    pt = add (multiply dir t) base
+
+    hitRec = if t < 0
+             then Nothing
+             else Just (HitRec (pt, n, t))
+
