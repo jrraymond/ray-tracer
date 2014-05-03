@@ -3,6 +3,7 @@ module Surfaces
   where
   import Geometry3
   import Data.Monoid
+  import Debug.Trace (trace)
 
   newtype Sphere3 = Sphere3 (Pt3 , Float)
   {- Hit records have an intersection point, a normal, and a time -}  
@@ -15,9 +16,9 @@ module Surfaces
       | otherwise = h2
 
 
-  (<>) :: Monoid a => a -> a -> a
-  (<>) = mappend
-  infixr 6 <>
+--  (<>) :: Monoid a => a -> a -> a
+--  (<>) = mappend
+--  infixr 6 <>
 
   data Surface = Sphere Pt3 Float
   intersect :: Ray3 -> Surface -> Maybe HitRec
@@ -36,6 +37,8 @@ module Surfaces
     pt = add (multiply dir t) base
     n = normalize $ subt pt center
     hitRec = if discriminant <= 0 || t < 0
-           then Nothing
-           else Just (HitRec (pt , n , t))
+               then Nothing
+               else Just (HitRec (pt , n , t)) -- if trace (show $ "hit: " ++ show pt ++ " t: " ++ show t) False 
+                  --then Nothing
+                  --else Just (HitRec (pt , n , t))
 

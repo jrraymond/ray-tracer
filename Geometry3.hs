@@ -30,7 +30,7 @@ module Geometry3 where
   dot (x1, y1, z1) (x2, y2, z2) = x1*x2 + y1*y2 + z1*z2
 
   cross :: Vec3 -> Vec3 -> Vec3
-  cross (x1, y1 , z1) (x2, y2, z2) = (y1*z2+z1*y2,-(x1*z2+z1*x2),x1*y2+y1*x2)
+  cross (x1, y1 , z1) (x2, y2, z2) = (y1*z2-z1*y2,z1*x2-x1*z2,x1*y2-y1*x2)
 
   normalize :: Vec3 -> Vec3
   normalize v = divide v (magnitude v)

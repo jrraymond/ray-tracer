@@ -23,16 +23,16 @@ import RayTracer
 main :: IO ()
 main = do 
     --for debuggin purposes draw a ppm
-    writePPM "output.ppm" 80 60 (render 80 60)
+    writePPM "output.ppm" 800 600 (render 800 600)
     --initialize OpenGL systems
-    (_progName, _args) <- GLUT.getArgsAndInitialize
-    --open the main window
-    _window <- GLUT.createWindow "Ray Tracer"
-    --set the display callback for the main window
-    GLUT.displayCallback GLUT.$= display
-    GLUT.reshapeCallback GLUT.$= Just reshape
-    --let GLUT take over
-    GLUT.mainLoop
+    --(_progName, _args) <- GLUT.getArgsAndInitialize
+    ----open the main window
+    --_window <- GLUT.createWindow "Ray Tracer"
+    ----set the display callback for the main window
+    --GLUT.displayCallback GLUT.$= display
+    --GLUT.reshapeCallback GLUT.$= Just reshape
+    ----let GLUT take over
+    --GLUT.mainLoop
 
 reshape :: GLUT.ReshapeCallback
 reshape size = do GLUT.viewport GLUT.$= (GLUT.Position 0 0, size)
@@ -42,10 +42,10 @@ display = do
     --clears out the graphics color state
     GLUT.clear [ GLUT.ColorBuffer ]
     (GL.Size x y) <- GLUT.get GLUT.windowSize
-    let pixels = flatten $ render 80 60
+    let pixels = flatten $ render 800 600
     arr <- newArray pixels :: IO (Ptr Float)
     --arr <- FMU.new (VS.replicate 100 (1 :: Float))
-    GL.drawPixels (GL.Size 80 60) (PixelData GL.RGB GL.Float arr)
+    GL.drawPixels (GL.Size 800 600) (PixelData GL.RGB GL.Float arr)
     --GL.drawPixels size undefined
     --pushes our OpenGL commands down to the systems graphics for display
     GLUT.flush
