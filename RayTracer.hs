@@ -2,7 +2,6 @@
 module RayTracer (render,flatten) where
   import Surfaces
   import Geometry3
-  import Data.Monoid
   import Debug.Trace
 
 
@@ -15,7 +14,8 @@ module RayTracer (render,flatten) where
                        camera :: (Vec3,Vec3,Vec3),
                        eye :: Pt3,
                        lookAt :: Pt3,
-                       surfaces :: [Shape]}
+                       surfaces :: [Shape],
+                       bbTree :: Surfaces}
                        --lights :: [Light]} TODO
 
   mapT :: (a -> b) -> (a,a) -> (b,b)
@@ -29,8 +29,8 @@ module RayTracer (render,flatten) where
 
   render :: Width -> Height -> [Color]
   render wd ht 
-  --  | trace (show u ++ "|" ++ show v ++ "|" ++ show w) False = undefined
-  --  | otherwise = map (rayTrace world) $ map (getRay world) pixels where
+    | trace (show $ makeBbt sfcs AxisX) False = undefined
+    | otherwise 
     = map (rayTrace world) $ map (getRay world) pixels where
     pixels = [ (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
     --eye = (4,4,4)
@@ -40,11 +40,11 @@ module RayTracer (render,flatten) where
     w = normalize $ subt eye lookAt
     u = normalize $ cross up w
     v = cross w u
-    sfcs = [ Sphere (3, 1, 5) 2 (0.5, 0.2, 0.5), 
-             Sphere (4, 10, 2) 1 (0.5, 0.2, 0.5) ,
-             Sphere (4, 0, 12) 1 (0.5, 0.2, 0.5) ,
-             Sphere (14, 0, 2) 1 (0.5, 0.2, 0.5) 
-           , Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) (0.6, 0.6, 0.6)
+    sfcs = [ Sphere (3, 1, 5) 2 (0.5, 0.2, 0.5) 
+           , Sphere (4, 10, 2) 1 (0.5, 0.2, 0.5)
+           , Sphere (4, 0, 12) 1 (0.5, 0.2, 0.5)
+           , Sphere (14, 0, 2) 1 (0.5, 0.2, 0.5) 
+           --, Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) (0.6, 0.6, 0.6)
            , Triangle (-10, -1, -10) (10, -1, -10) (-10, 5, -10) (1, 215/255, 0)
            , Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) (1, 215/255, 0)
            , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) (1, 215/255, 0)
@@ -56,7 +56,8 @@ module RayTracer (render,flatten) where
                     camera = (u,v,w),
                     eye = eye,
                     lookAt = lookAt,
-                    surfaces = sfcs--[Sphere (0,0,0) 1]
+                    surfaces = sfcs
+                  , bbTree = makeBbt sfcs AxisX
                   }
   
   flatten :: [(Float,Float,Float)] -> [Float]
@@ -65,8 +66,8 @@ module RayTracer (render,flatten) where
 
   rayTrace :: World -> Ray3 -> Color
   rayTrace world ray = color where
-    World { surfaces = surfaces } = world
-    intersection = maximum $ map (intersect ray) surfaces
+    World { surfaces = surfaces, bbTree = bbTree } = world
+    intersection = hits ray bbTree
     color = case intersection of
               Nothing -> (0,0,0)
               Just (HitRec (_, _, t, c)) -> c

@@ -16,12 +16,14 @@ module Surfaces
   instance Ord HitRec where
     h1@(HitRec (_,_,t1,_)) <= h2@(HitRec (_,_,t2,_)) = t1 >= t2
 
-
+  {- Surfaces is a node in a tree consisting of -}
   data Surfaces = Node Surfaces Surfaces Shape | Leaf Shape Material | Empty
+    deriving Show
+
   data Shape = Sphere Pt3 Float Color
              | Triangle Pt3 Pt3 Pt3 Color
-             | Plane Pt3 Pt3 Pt3 Color
-             | Box Float Float Float Float Float Float 
+             | Plane Pt3 Pt3 Pt3 Color 
+             | Box Float Float Float Float Float Float deriving (Show)
   type Material = ()
 
   {- Shapes form a semigroup with respect to make a bounding box out of them -}
@@ -35,11 +37,19 @@ module Surfaces
       f  = max (z+r) (z'+r')
     (Sphere (x,y,z) r _) <> (Triangle (ax,ay,az) (bx,by,bz) (cx,cy,cz) _) = Box l rt b t n f where
       l  = min (x-r) $ min ax $ min bx cx
-      rt = max (x-r) $ max ax $ max bx cx
+      rt = max (x+r) $ max ax $ max bx cx
       b  = min (y-r) $ min ay $ min by cy
-      t  = max (y-r) $ max ay $ max by cy
+      t  = max (y+r) $ max ay $ max by cy
       n  = min (z-r) $ min az $ min bz cz
-      f  = max (z-r) $ max az $ max bz cz
+      f  = max (z+r) $ max az $ max bz cz
+    (Triangle (ax,ay,az) (bx,by,bz) (cx,cy,cz) _) <>  
+      (Triangle (ax',ay',az') (bx',by',bz') (cx',cy',cz') _) = Box l r b t n f where
+      l = min ax $ min bx $ min cx $ min ax' $ min bx' cx'
+      r = max ax $ max bx $ max cx $ max ax' $ max bx' cx'
+      b = min ay $ min by $ min cy $ min ay' $ min by' cy'
+      t = max ay $ max by $ max cy $ max ay' $ max by' cy'
+      n = min az $ min bz $ min cz $ min az' $ min bz' cz'
+      f = max az $ max bz $ max cz $ max az' $ max bz' cz'
     t@(Triangle _ _ _ _) <> s@(Sphere _ _ _) = s <> t
     (Box l rt b t n f) <> (Sphere (x,y,z) r _) = Box l' rt' b' t' n' f' where
       l'  = min l (x-r)
@@ -48,13 +58,15 @@ module Surfaces
       t'  = max t (y+r)
       n'  = min n (z-r)
       f'  = max f (z+r)
-    (Triangle (ax,ay,az) (bx,by,bz) (cx,cy,cz) _) <> (Box l r b t n f) = Box l' r' b' t' n' f' where
+    (Box l r b t n f) <> (Triangle (ax,ay,az) (bx,by,bz) (cx,cy,cz) _) = Box l' r' b' t' n' f' where
       l' = min l $ min ax $ min bx cx
       r' = max r $ max ax $ max bx cx
       b' = min b $ min ay $ min by cy
       t' = max t $ max ay $ max by cy
       n' = min n $ min az $ min bz cz
       f' = max f $ max az $ max bz cz
+    t@(Triangle _ _ _ _) <> b@(Box _ _ _ _ _ _) = b <> t
+    s@(Sphere _ _ _) <> b@(Box _ _ _ _ _ _) = b <> s
     _ <> _ = error "attempted to make bounding box around plane or box"
 
   toNonEmpty :: [a] -> NonEmpty a
@@ -81,26 +93,16 @@ module Surfaces
   getMid (Box _ _ b t _ _) AxisY = (b+t) / 2
   getMid (Box _ _ _ _ n f) AxisZ = (n+f) / 2
 
-  getBox :: Shape -> Shape
-  getBox (Sphere (x,y,z) r _) = Box (x-r) (x+r) (y-r) (y+r) (z-r) (z+r)
-  getBox (Triangle (ax,ay,az) (bx,by,bz) (cx,cy,cz) _) = Box l r b t n f where
-    l = min ax $ min bx cx
-    r = max ax $ max bx cx
-    b = min ay $ min by cy
-    t = max ay $ max by cy
-    n = min az $ min bz cz
-    f = max az $ max bz cz
-  getBox _ = error "Attempted to create bounding box around plane or bounding box"
-
-  
-
 
   hits :: Ray3 -> Surfaces -> Maybe HitRec
-  hits ray (Leaf shape material) = intersect ray shape 
+  hits _ Empty = Nothing
+  hits ray (Leaf shape _) 
+   {- | trace (show shape) False = undefined
+    | otherwise-} = intersect ray shape 
   hits ray (Node left right bbox) = 
     case intersect ray bbox of
       Nothing -> Nothing
-      _ -> min (hits ray left) (hits ray right)
+      _ -> max (hits ray left) (hits ray right)
 
   -- Surface intersection functions
   intersect :: Ray3 -> Shape -> Maybe HitRec
@@ -174,6 +176,6 @@ module Surfaces
                              else ((r - bx) / dx , (l - bx) / dx)
     (t_y0,t_y1) = if dy >= 0 then ((b - by) / dy , (t - by) / dy)
                              else ((t - by) / dy , (b - by) / dy)
-    (t_z0,t_z1) = if dz >= 0 then ((n - bz) / dz , (n - bz) / dz)
-                             else ((f - bz) / dz , (f - bz) / dz)
+    (t_z0,t_z1) = if dz >= 0 then ((n - bz) / dz , (f - bz) / dz)
+                             else ((f - bz) / dz , (n - bz) / dz)
     color = (0,0,0)
