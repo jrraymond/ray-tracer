@@ -2,7 +2,7 @@ module Surfaces
 
   where
   import Geometry3
-  import Data.Monoid
+  import Data.Semigroup
   import Debug.Trace (trace)
 
   type Color = (Float , Float , Float)
@@ -20,13 +20,60 @@ module Surfaces
 --  (<>) = mappend
 --  infixr 6 <>
 
-  data Surface = Bbox Surface Surface Shape | Leaf Shape Material
+  data Surfaces = Node Surfaces Surfaces Shape | Leaf Shape Material | Empty
   data Shape = Sphere Pt3 Float Color
-               | Triangle Pt3 Pt3 Pt3 Color
-               | Plane Pt3 Pt3 Pt3 Color
-               | Box Float Float Float Float Float Float 
+             | Triangle Pt3 Pt3 Pt3 Color
+             | Plane Pt3 Pt3 Pt3 Color
+             | Box Float Float Float Float Float Float 
   type Material = ()
 
+  {- Shapes form a semigroup with respect to make a bounding box out of them -}
+  instance Semigroup Shape where
+    (Sphere (x,y,z) r _) <> (Sphere (x',y',z') r' _) = Box l rt b t n f where
+      l  = min (x-r) (x'-r')
+      rt = max (x+r) (x'+r')
+      b  = min (y-r) (y'-r')
+      t  = max (y+r) (y'+r')
+      n  = min (z-r) (z'-r')
+      f  = max (z+r) (z'+r')
+    (Sphere (x,y,z) r _) <> (Triangle (ax,ay,az) (bx,by,bz) (cx,cy,cz) _) = Box l rt b t n f where
+      l = min (x-r) $ min ax $ min bx cx
+      rt = min (x-r) $ min ax $ min bx cx
+      b = min (y-r) $ min ay $ min by cy
+      t = min (y-r) $ min ay $ min by cy
+      n = min (z-r) $ min az $ min bz cz
+      f = min (z-r) $ min az $ min bz cz
+    t@(Triangle _ _ _ _) <> s@(Sphere _ _ _) = s <> t
+    _ <> _ = error "attempted to make bounding box around plane or box"
+
+  makeBoundingHierarchy :: [Shape] -> Surfaces
+  makeBoundingHierarchy [] = Empty
+  makeBoundingHierarchy (s:[]) = Leaf s ()
+  makeBoundingHeirarchy ss = Node left right bbox where
+    left = Empty
+    right = Empty
+    bbox = sconcat ss
+
+  getBox :: Shape -> Shape
+  getBox (Sphere (x,y,z) r _) = Box (x-r) (x+r) (y-r) (y+r) (z-r) (z+r)
+  getBox (Triangle (ax,ay,az) (bx,by,bz) (cx,cy,cz) _) = Box l r b t n f where
+    l = min ax $ min bx cx
+    r = max ax $ max bx cx
+    b = min ay $ min by cy
+    t = max ay $ max by cy
+    n = min az $ min bz cz
+    f = max az $ max bz cz
+  getBox _ = error "Attempted to create bounding box around plane or bounding box"
+
+  
+
+
+  hits :: Ray3 -> Surfaces -> Maybe HitRec
+  hits ray (Leaf shape material) = intersect ray shape 
+  hits ray (Node left right bbox) = 
+    case intersect ray bbox of
+      Nothing -> Nothing
+      _ -> (hits ray left) `mappend` (hits ray right)
 
   -- Surface intersection functions
   intersect :: Ray3 -> Shape -> Maybe HitRec
