@@ -5,7 +5,8 @@ module Surfaces
   import Data.Monoid
   import Debug.Trace (trace)
 
-  newtype Sphere3 = Sphere3 (Pt3 , Float)
+  
+  --data Option a  = Nothing | Hits | HitsAt Pt3 Vec3 Float
   {- Hit records have an intersection point, a normal, and a time -}  
   newtype HitRec = HitRec (Pt3 , Vec3 , Float) deriving Show
 
@@ -20,14 +21,14 @@ module Surfaces
 --  (<>) = mappend
 --  infixr 6 <>
 
-  data Surface = Bbox Surface Surface Shape | Leaf Shape Material
+  data Surface = Node Surface Surface Shape | Leaf Shape Material
   data Shape = Sphere Pt3 Float 
-               | Triangle Pt3 Pt3 Pt3 
-               | Plane Pt3 Pt3 Pt3 
-               | Box Pt3 Pt3 Pt3 Pt3 Pt3 Pt3
+             | Triangle Pt3 Pt3 Pt3 
+             | Plane Pt3 Pt3 Pt3 
+             | Box Pt3 Pt3 Pt3 Pt3 Pt3 Pt3
   type Material = ()
 
-
+  intersects :: Ray3 -> Surface ->
   intersect :: Ray3 -> Shape -> Maybe HitRec
   intersect (Ray3 (base , dir)) (Sphere center radius) = hitRec where
     ec = subt base center
