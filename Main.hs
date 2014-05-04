@@ -56,13 +56,13 @@ writePPM name w h pixels = do writeFile name string  where
   toStr = (++ " ") . show . truncate . (255*)
   f :: [Color] -> String
   f [] = ""
-  f ((r,g,b):ps) = toStr r ++ toStr g ++ toStr b ++ f ps
+  f ((Color (r,g,b)):ps) = toStr r ++ toStr g ++ toStr b ++ f ps
   string = "P3\n" ++ show w ++ " " ++ show h ++ " 255\n" ++ f pixels
 
-save_ppm :: FilePath -> [[(Float,Float,Float)]] -> IO ()
+save_ppm :: FilePath -> [[Color]] -> IO ()
 save_ppm f css = writeFile f $ make_ppm css
  
-make_ppm :: [[(Float,Float,Float)]] -> String
+make_ppm :: [[Color]] -> String
 make_ppm css =
       "P3\n" ++ (show $ length $ head css) ++ " " ++ (show $ length css) ++ " 255\n" ++
         (unlines $ map unwords $ group' 15 $ map show $ concatMap colour $ concat css)
@@ -71,8 +71,8 @@ group' _ [] = []
 group' n xs =
       let (xs0,xs1) = splitAt n xs
             in  xs0 : group' n xs1
-colour :: (Float,Float,Float) -> [Int]             
-colour (r,g,b) = [channel r, channel g, channel b]
+colour :: Color -> [Int]             
+colour (Color (r,g,b)) = [channel r, channel g, channel b]
  
 channel :: Float -> Int
 channel = floor . (255*) . min 1 . max 0

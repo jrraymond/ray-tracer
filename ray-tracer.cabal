@@ -68,7 +68,7 @@ executable ray-tracer
                        vector >= 0.10.0.1,
                        semigroups >= 0.13.0.0
           
-                       
+  GHC-Options: -Wall                      
   
   -- Directories containing source files.
   -- hs-source-dirs:      
