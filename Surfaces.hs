@@ -24,7 +24,7 @@ module Surfaces
   {- Define an ordering on hit records. We define the ordering in reverse
    - to deal with the fact that Nothing is always less than Just -}
   instance Ord HitRec where
-    h1@(HitRec (_,_,t1,_)) <= h2@(HitRec (_,_,t2,_)) = t1 >= t2
+    HitRec (_,_,t1,_) <= HitRec (_,_,t2,_) = t1 >= t2
 
   type Light = (Pt3, Color)
 
@@ -188,4 +188,4 @@ module Surfaces
     (t_z0,t_z1) = if dz >= 0 then ((n - bz) / dz , (f - bz) / dz)
                              else ((f - bz) / dz , (n - bz) / dz)
     color = Color (0,0,0)
-    material = undefined
+    material = error "material undefined"

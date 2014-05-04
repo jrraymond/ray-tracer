@@ -32,7 +32,7 @@ module RayTracer (render,flatten) where
 
   render :: Width -> Height -> [Color]
   render wd ht 
-    | trace (show $ makeBbt sfcs AxisX) False = undefined
+    | trace (show $ makeBbt sfcs AxisX) False = error "fuck"
     | otherwise 
     = map (rayTrace world) $ map (getRay world) pixels where
     pixels = [ (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
@@ -47,7 +47,7 @@ module RayTracer (render,flatten) where
                  , Color (0.5, 0.2, 0.5)
                  , Color (1.0, 1.0, 1.0)
                  , 1000.0
-                 , undefined
+                 , Color (0,0,0)
                  )
     mat_plane = ( Color (0.6, 0.6, 0.6)
                 , Color (0.6, 0.6, 0.6)
@@ -59,7 +59,7 @@ module RayTracer (render,flatten) where
                    , Color (1, 215/255, 0)
                    , Color (0, 0, 0)
                    , 0
-                   , undefined
+                   , Color (0,0,0)
                    )
     sfcs = [ Sphere (3, 1, 5) 2 mat_sphere
            , Sphere (4, 10, 2) 1 mat_sphere
@@ -100,9 +100,7 @@ module RayTracer (render,flatten) where
               Just hitRec -> getColor world hitRec
   
   getRay :: World -> (Int,Int) -> Ray3
-  getRay world pixel_coords 
---    | trace ("i:" ++ show i ++ " j: " ++ show j ++ "\t" ++ show (u_world,v_world,w_world) ++ "   " ++ show dir) False = undefined
-   | otherwise = Ray3 (base , dir) where
+  getRay world pixel_coords = Ray3 (base , dir) where
     World { imgDim = img_dim,
             viewPlane = (viewWd',viewHt',viewDist),
             camera = (u,v,w) ,
