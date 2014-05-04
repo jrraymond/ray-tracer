@@ -20,6 +20,7 @@ main = do
     (_progName, _args) <- GLUT.getArgsAndInitialize
     ----open the main window
     _window <- GLUT.createWindow "Ray Tracer"
+    GLUT.windowSize GLUT.$= (GL.Size 800 600)
     ----set the display callback for the main window
     GLUT.displayCallback GLUT.$= display
     GLUT.reshapeCallback GLUT.$= Just reshape
@@ -32,7 +33,7 @@ display :: GLUT.DisplayCallback
 display = do
     --clears out the graphics color state
     GLUT.clear [ GLUT.ColorBuffer ]
-    (GL.Size x y) <- GLUT.get GLUT.windowSize
+    --(GL.Size x y) <- GLUT.get GLUT.windowSize
     let pixels = flatten $ render 800 600
     arr <- newArray pixels :: IO (Ptr Float)
     --arr <- FMU.new (VS.replicate 100 (1 :: Float))
