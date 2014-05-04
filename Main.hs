@@ -50,11 +50,11 @@ display = do
     --pushes our OpenGL commands down to the systems graphics for display
     GLUT.flush
 
-writePPM :: String -> Int -> Int -> [(Float,Float,Float)] -> IO ()
+writePPM :: String -> Int -> Int -> [Color] -> IO ()
 writePPM name w h pixels = do writeFile name string  where 
   toStr :: Float -> String
-  toStr = (++ " ") . show . (255*) . truncate
-  f :: [(Float,Float,Float)] -> String
+  toStr = (++ " ") . show . truncate . (255*)
+  f :: [Color] -> String
   f [] = ""
   f ((r,g,b):ps) = toStr r ++ toStr g ++ toStr b ++ f ps
   string = "P3\n" ++ show w ++ " " ++ show h ++ " 255\n" ++ f pixels

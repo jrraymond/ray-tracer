@@ -5,14 +5,13 @@ module Surfaces
   import Data.Monoid
   import Debug.Trace (trace)
 
-  
-  --data Option a  = Nothing | Hits | HitsAt Pt3 Vec3 Float
+  type Color = (Float , Float , Float)
   {- Hit records have an intersection point, a normal, and a time -}  
-  newtype HitRec = HitRec (Pt3 , Vec3 , Float) deriving Show
+  newtype HitRec = HitRec (Pt3 , Vec3 , Float, Color) deriving Show
 
   {- Semigroup for hitrec TODO using semigroup instead-}
   instance Monoid HitRec where
-    h1@(HitRec (_,_,t1)) `mappend` h2@(HitRec (_,_,t2)) 
+    h1@(HitRec (_,_,t1,_)) `mappend` h2@(HitRec (_,_,t2,_))
       | t1 < t2 = h1 
       | otherwise = h2
 
@@ -21,16 +20,17 @@ module Surfaces
 --  (<>) = mappend
 --  infixr 6 <>
 
-  data Surface = Node Surface Surface Shape | Leaf Shape Material
-  data Shape = Sphere Pt3 Float 
-             | Triangle Pt3 Pt3 Pt3 
-             | Plane Pt3 Pt3 Pt3 
-             | Box Pt3 Pt3 Pt3 Pt3 Pt3 Pt3
+  data Surface = Bbox Surface Surface Shape | Leaf Shape Material
+  data Shape = Sphere Pt3 Float Color
+               | Triangle Pt3 Pt3 Pt3 Color
+               | Plane Pt3 Pt3 Pt3 Color
+               | Box Pt3 Pt3 Pt3 Pt3 Pt3 Pt3
   type Material = ()
 
-  intersects :: Ray3 -> Surface ->
+
+  -- Surface intersection functions
   intersect :: Ray3 -> Shape -> Maybe HitRec
-  intersect (Ray3 (base , dir)) (Sphere center radius) = hitRec where
+  intersect (Ray3 (base , dir)) (Sphere center radius color) = hitRec where
     ec = subt base center
     dec = dot dir ec
     dirdir = dot dir dir
@@ -44,8 +44,8 @@ module Surfaces
     t = min t_a t_b
     pt = add (multiply dir t) base
     n = normalize $ subt pt center
-    hitRec = if discriminant <= 0 || t < 0 then Nothing else Just (HitRec (pt , n , t)) 
-  intersect (Ray3 ((base_x, base_y, base_z), (g, h, i))) (Triangle pt_a pt_b pt_c) = hitRec where
+    hitRec = if discriminant <= 0 || t < 0 then Nothing else Just (HitRec (pt , n , t, color)) 
+  intersect (Ray3 ((base_x, base_y, base_z), (g, h, i))) (Triangle pt_a pt_b pt_c color) = hitRec where
     (ax, ay, az) = pt_a
     (bx, by, bz) = pt_b
     (cx, cy, cz) = pt_c
@@ -70,14 +70,28 @@ module Surfaces
 
     hitRec = if beta < 0 || beta > 1 || gamma < 0 || beta+gamma > 1 || t < 0
              then Nothing 
-             else Just (HitRec (pt , n , t)) 
+             else Just (HitRec (pt , n , t, color)) 
+  intersect (Ray3 (base, dir)) (Plane a b c color) = hitRec where
+    v1 = subt b a
+    v2 = subt c a
+    n = normalize $ cross v1 v2
+    
+    a_e = subt a base
+
+    t = dot a_e n / dot dir n
+    pt = add (multiply dir t) base
+
+    hitRec = if t < 0
+             then Nothing
+             else Just (HitRec (pt, n, t, color))
   intersect (Ray3 ((bx,by,bz),(dx,dy,dz))) (Box l r b t n f) 
     | t_x0 > t_y1 || t_x0 > t_z1 || t_x1 < t_y0 || t_x1 < t_z0 ||
       t_y0 > t_z1 || t_y1 < t_z0  = Nothing
-    | otherwise = Just (HitRec ((0,0,0),(0,0,0),0))  where
+    | otherwise = Just (HitRec ((0,0,0),(0,0,0),0,color))  where
     (t_x0,t_x1) = if dx >= 0 then ((l - bx) / dx , (r - bx) / dx) 
                              else ((r - bx) / dx , (l - bx) / dx)
     (t_y0,t_y1) = if dy >= 0 then ((b - by) / dy , (t - by) / dy)
                              else ((t - by) / dy , (b - by) / dy)
     (t_z0,t_z1) = if dz >= 0 then ((n - bz) / dz , (n - bz) / dz)
                              else ((f - bz) / dz , (f - bz) / dz)
+    color = (0,0,0)
