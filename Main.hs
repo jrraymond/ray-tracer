@@ -4,10 +4,10 @@
 -  Ray Tracer
 -}
 {-# LANGUAGE ForeignFunctionInterface #-}
---import Foreign
---import qualified Graphics.UI.GLUT as GLUT
---import qualified Graphics.Rendering.OpenGL as GL
---import Graphics.Rendering.OpenGL.GL.PixelRectangles.Rasterization
+import Foreign
+import qualified Graphics.UI.GLUT as GLUT
+import qualified Graphics.Rendering.OpenGL as GL
+import Graphics.Rendering.OpenGL.GL.PixelRectangles.Rasterization
 import Surfaces
 import RayTracer
 
@@ -17,15 +17,14 @@ main = do
     --for debuggin purposes draw a ppm
     writePPM "output.ppm" 800 600 (render 800 600)
     --initialize OpenGL systems
-    --(_progName, _args) <- GLUT.getArgsAndInitialize
+    (_progName, _args) <- GLUT.getArgsAndInitialize
     ----open the main window
-    --_window <- GLUT.createWindow "Ray Tracer"
+    _window <- GLUT.createWindow "Ray Tracer"
     ----set the display callback for the main window
-    --GLUT.displayCallback GLUT.$= display
-    --GLUT.reshapeCallback GLUT.$= Just reshape
+    GLUT.displayCallback GLUT.$= display
+    GLUT.reshapeCallback GLUT.$= Just reshape
     ----let GLUT take over
-    --GLUT.mainLoop
-{-
+    GLUT.mainLoop
 reshape :: GLUT.ReshapeCallback
 reshape size = do GLUT.viewport GLUT.$= (GLUT.Position 0 0, size)
 
@@ -41,7 +40,6 @@ display = do
     --GL.drawPixels size undefined
     --pushes our OpenGL commands down to the systems graphics for display
     GLUT.flush
--}
 writePPM :: String -> Int -> Int -> [Color] -> IO ()
 writePPM name w h pixels = do writeFile name string  where 
   toStr :: Float -> String

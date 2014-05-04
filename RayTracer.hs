@@ -61,14 +61,14 @@ module RayTracer (render,flatten) where
                    , Color (0,0,0)
                    )
     sfcs = [ Sphere (3, 1, 5) 2 mat_sphere
-           , Sphere (4, 10, 2) 1 mat_sphere
-           , Sphere (4, 0, 12) 1 mat_sphere
-           , Sphere (14, 0, 2) 1 mat_sphere
-         --  , Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) mat_plane
+       --    , Sphere (4, 10, 2) 1 mat_sphere
+       --    , Sphere (4, 0, 12) 1 mat_sphere
+       --    , Sphere (14, 0, 2) 1 mat_sphere
+       --  --  , Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) mat_plane
            , Triangle (-10, -1, -10) (10, -1, -10) (-10, 5, -10) mat_triangle
-           , Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) mat_triangle
-           , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) mat_triangle
-           , Triangle (-10, -1, -10) (-10, 5, 10) (-10, -1, 10) mat_triangle
+       --    , Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) mat_triangle
+       --    , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) mat_triangle
+       --    , Triangle (-10, -1, -10) (-10, 5, 10) (-10, -1, 10) mat_triangle
            ]
     lts = [ ((50, 20, 0), Color (0.5, 0.5, 0.5))
           , ((3, 2, 20), Color (0.2, 0.2, 0.2))
