@@ -4,7 +4,10 @@ module Surfaces
   import Geometry3
   import Data.Semigroup
   import Debug.Trace (trace)
+  import Data.List (partition)
+  import Data.List.NonEmpty (NonEmpty, NonEmpty((:|)))
 
+  data Axis = AxisX | AxisY | AxisZ deriving (Show, Eq)
   type Color = (Float , Float , Float)
   {- Hit records have an intersection point, a normal, and a time -}  
   newtype HitRec = HitRec (Pt3 , Vec3 , Float, Color) deriving Show
@@ -37,22 +40,52 @@ module Surfaces
       n  = min (z-r) (z'-r')
       f  = max (z+r) (z'+r')
     (Sphere (x,y,z) r _) <> (Triangle (ax,ay,az) (bx,by,bz) (cx,cy,cz) _) = Box l rt b t n f where
-      l = min (x-r) $ min ax $ min bx cx
-      rt = min (x-r) $ min ax $ min bx cx
-      b = min (y-r) $ min ay $ min by cy
-      t = min (y-r) $ min ay $ min by cy
-      n = min (z-r) $ min az $ min bz cz
-      f = min (z-r) $ min az $ min bz cz
+      l  = min (x-r) $ min ax $ min bx cx
+      rt = max (x-r) $ max ax $ max bx cx
+      b  = min (y-r) $ min ay $ min by cy
+      t  = max (y-r) $ max ay $ max by cy
+      n  = min (z-r) $ min az $ min bz cz
+      f  = max (z-r) $ max az $ max bz cz
     t@(Triangle _ _ _ _) <> s@(Sphere _ _ _) = s <> t
+    (Box l rt b t n f) <> (Sphere (x,y,z) r _) = Box l' rt' b' t' n' f' where
+      l'  = min l (x-r)
+      rt' = max rt (x+r)
+      b'  = min b (y-r)
+      t'  = max t (y+r)
+      n'  = min n (z-r)
+      f'  = max f (z+r)
+    (Triangle (ax,ay,az) (bx,by,bz) (cx,cy,cz) _) <> (Box l r b t n f) = Box l' r' b' t' n' f' where
+      l' = min l $ min ax $ min bx cx
+      r' = max r $ max ax $ max bx cx
+      b' = min b $ min ay $ min by cy
+      t' = max t $ max ay $ max by cy
+      n' = min n $ min az $ min bz cz
+      f' = max f $ max az $ max bz cz
     _ <> _ = error "attempted to make bounding box around plane or box"
 
-  makeBoundingHierarchy :: [Shape] -> Surfaces
-  makeBoundingHierarchy [] = Empty
-  makeBoundingHierarchy (s:[]) = Leaf s ()
-  makeBoundingHeirarchy ss = Node left right bbox where
-    left = Empty
-    right = Empty
-    bbox = sconcat ss
+  toNonEmpty :: [a] -> NonEmpty a
+  toNonEmpty [] = error "list is empty"
+  toNonEmpty (a:as) = a:|as
+
+  makeBbt :: [Shape] -> Axis -> Surfaces
+  makeBbt [] _ = Empty
+  makeBbt (s:[]) _ = Leaf s ()
+  makeBbt sfcs axis = Node (makeBbt left axis') (makeBbt right axis') bbox where
+    (left,right) = partition (\shape -> getMid shape axis <= mid) sfcs
+    mid = getMid bbox axis
+    bbox = sconcat $ toNonEmpty sfcs
+    axis' = if axis == AxisX then AxisY else if axis == AxisY then AxisZ else AxisX
+
+  getMid :: Shape -> Axis -> Float
+  getMid (Sphere (x,_,_) _ _) AxisX = x 
+  getMid (Sphere (_,y,_) _ _) AxisY = y 
+  getMid (Sphere (_,_,z) _ _) AxisZ = z 
+  getMid (Triangle (ax,_,_) (bx,_,_) (cx,_,_) _ ) AxisX = (ax+bx+cx) / 3
+  getMid (Triangle (_,ay,_) (_,by,_) (_,cy,_) _ ) AxisY = (ay+by+cy) / 3
+  getMid (Triangle (_,_,az) (_,_,bz) (_,_,cz) _ ) AxisZ = (az+bz+cz) / 3
+  getMid (Box l r _ _ _ _) AxisX = (l+r) / 2
+  getMid (Box _ _ b t _ _) AxisY = (b+t) / 2
+  getMid (Box _ _ _ _ n f) AxisZ = (n+f) / 2
 
   getBox :: Shape -> Shape
   getBox (Sphere (x,y,z) r _) = Box (x-r) (x+r) (y-r) (y+r) (z-r) (z+r)
