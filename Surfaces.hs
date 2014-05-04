@@ -69,7 +69,8 @@ module Surfaces
     beta = (j*ei_hf + k*gf_di + l*dh_eg) / m
     gamma = (i*ak_jb + h*jc_al + g*bl_kc) / m
 
-    t = -(f*ak_jb + e*jc_al + d*bl_kc) / m
+    -- if I put the neg in t < 0, which is not right
+    t = (f*ak_jb + e*jc_al + d*bl_kc) / m 
     pt = add base $ multiply dir t
     n = normalize $ cross (subt tb ta) (subt tc ta)
 

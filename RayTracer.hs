@@ -40,11 +40,11 @@ module RayTracer (render,flatten) where
     w = normalize $ subt eye lookAt
     u = normalize $ cross up w
     v = cross w u
-    sfcs = [ Sphere (0, 0, 0) 1 (0.5, 0.2, 0.5), 
+    sfcs = [ Sphere (3, 1, 5) 2 (0.5, 0.2, 0.5), 
              Sphere (4, 10, 2) 1 (0.5, 0.2, 0.5) ,
              Sphere (4, 0, 12) 1 (0.5, 0.2, 0.5) ,
              Sphere (14, 0, 2) 1 (0.5, 0.2, 0.5) 
-           --, Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) (0.6, 0.6, 0.6)
+           , Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) (0.6, 0.6, 0.6)
            , Triangle (-10, -1, -10) (10, -1, -10) (-10, 5, -10) (1, 215/255, 0)
            , Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) (1, 215/255, 0)
            , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) (1, 215/255, 0)
@@ -69,9 +69,7 @@ module RayTracer (render,flatten) where
     intersection = mconcat $ map (intersect ray) surfaces
     color = case intersection of
               Nothing -> (0,0,0)
-              Just (HitRec (_, _, t, c)) -> if trace (show t) False 
-                                            then c 
-                                            else c
+              Just (HitRec (_, _, t, c)) -> c
   
   getRay :: World -> (Int,Int) -> Ray3
   getRay world pixel_coords 
