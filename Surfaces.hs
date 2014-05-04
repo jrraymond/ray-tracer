@@ -10,18 +10,12 @@ module Surfaces
   data Axis = AxisX | AxisY | AxisZ deriving (Show, Eq)
   type Color = (Float , Float , Float)
   {- Hit records have an intersection point, a normal, and a time -}  
-  newtype HitRec = HitRec (Pt3 , Vec3 , Float, Color) deriving Show
+  newtype HitRec = HitRec (Pt3 , Vec3 , Float, Color) deriving (Show, Eq)
 
   {- Semigroup for hitrec TODO using semigroup instead-}
-  instance Monoid HitRec where
-    h1@(HitRec (_,_,t1,_)) `mappend` h2@(HitRec (_,_,t2,_))
-      | t1 < t2 = h1 
-      | otherwise = h2
+  instance Ord HitRec where
+    h1@(HitRec (_,_,t1,_)) <= h2@(HitRec (_,_,t2,_)) = t1 >= t2
 
-
---  (<>) :: Monoid a => a -> a -> a
---  (<>) = mappend
---  infixr 6 <>
 
   data Surfaces = Node Surfaces Surfaces Shape | Leaf Shape Material | Empty
   data Shape = Sphere Pt3 Float Color
@@ -106,7 +100,7 @@ module Surfaces
   hits ray (Node left right bbox) = 
     case intersect ray bbox of
       Nothing -> Nothing
-      _ -> (hits ray left) `mappend` (hits ray right)
+      _ -> min (hits ray left) (hits ray right)
 
   -- Surface intersection functions
   intersect :: Ray3 -> Shape -> Maybe HitRec

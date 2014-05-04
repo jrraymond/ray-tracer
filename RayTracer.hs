@@ -66,7 +66,7 @@ module RayTracer (render,flatten) where
   rayTrace :: World -> Ray3 -> Color
   rayTrace world ray = color where
     World { surfaces = surfaces } = world
-    intersection = mconcat $ map (intersect ray) surfaces
+    intersection = maximum $ map (intersect ray) surfaces
     color = case intersection of
               Nothing -> (0,0,0)
               Just (HitRec (_, _, t, c)) -> c
