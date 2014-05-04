@@ -8,7 +8,12 @@ module Surfaces
   import Data.List.NonEmpty (NonEmpty, NonEmpty((:|)))
 
   data Axis = AxisX | AxisY | AxisZ deriving (Show, Eq)
-  type Color = (Float , Float , Float)
+  newtype Color = Color (Float , Float , Float) deriving (Show, Eq)
+
+  instance Monoid Color where
+    (Color (r, g, b)) `mappend` (Color (r', g', b')) = Color (r + r', g + g', b + b')
+    mempty = Color (0, 0, 0)
+    
 
   {- Ambient, Diffuse, Specular, Blinn-Phong, Reflection -}
   type Material = (Color, Color, Color, Float, Color)
@@ -21,6 +26,7 @@ module Surfaces
   instance Ord HitRec where
     h1@(HitRec (_,_,t1,_)) <= h2@(HitRec (_,_,t2,_)) = t1 >= t2
 
+  type Light = (Pt3, Color)
 
   data Surfaces = Node Surfaces Surfaces Shape | Leaf Shape | Empty
   {- Todo change color to material -}

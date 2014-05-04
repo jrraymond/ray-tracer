@@ -10,13 +10,15 @@ module RayTracer (render,flatten) where
   type Height = Int
   --type Color = (Float , Float , Float)
 
-  data World = World { imgDim :: (Width,Height),
-                       viewPlane :: (Width,Height,Float),
-                       camera :: (Vec3,Vec3,Vec3),
-                       eye :: Pt3,
-                       lookAt :: Pt3,
-                       surfaces :: [Shape]}
-                       --lights :: [Light]} TODO
+  data World = World { imgDim :: (Width,Height)
+                     , viewPlane :: (Width,Height,Float)
+                     , camera :: (Vec3,Vec3,Vec3)
+                     , eye :: Pt3
+                     , lookAt :: Pt3
+                     , surfaces :: [Shape]
+                     , lights :: [Light]
+                     , ambient :: Color
+                     }
 
   mapT :: (a -> b) -> (a,a) -> (b,b)
   mapT f (a,b) = (f a,f b)
@@ -40,21 +42,21 @@ module RayTracer (render,flatten) where
     w = normalize $ subt eye lookAt
     u = normalize $ cross up w
     v = cross w u
-    mat_sphere = ( (0.5, 0.2, 0.5)
-                 , (0.5, 0.2, 0.5)
-                 , (1.0, 1.0, 1.0)
+    mat_sphere = ( Color (0.5, 0.2, 0.5)
+                 , Color (0.5, 0.2, 0.5)
+                 , Color (1.0, 1.0, 1.0)
                  , 1000.0
                  , undefined
                  )
-    mat_plane = ( (0.6, 0.6, 0.6)
-                , (0.6, 0.6, 0.6)
-                , (0.0, 0.0, 0.0)
+    mat_plane = ( Color (0.6, 0.6, 0.6)
+                , Color (0.6, 0.6, 0.6)
+                , Color (0.0, 0.0, 0.0)
                 , 0.0
-                , (0.6, 0.6, 0.6)
+                , Color (0.6, 0.6, 0.6)
                 )
-    mat_triangle = ( (1, 215/255, 0)
-                   , (1, 215/255, 0)
-                   , (0, 0, 0)
+    mat_triangle = ( Color (1, 215/255, 0)
+                   , Color (1, 215/255, 0)
+                   , Color (0, 0, 0)
                    , 0
                    , undefined
                    )
@@ -68,25 +70,31 @@ module RayTracer (render,flatten) where
            , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) mat_triangle
            , Triangle (-10, -1, -10) (-10, 5, 10) (-10, -1, 10) mat_triangle
            ]
+    lts = [ ((50, 20, 0), Color (0.5, 0.5, 0.5))
+          , ((3, 2, 20), Color (0.2, 0.2, 0.2))
+          ]
+    amb = Color (0.1, 0.1, 0.1)
     --sfcs = [Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) (1, 215/255, 0)]
     --sfcs = [Sphere (0, 0, 0) 1 (0.5, 0.2, 0.5)]
-    world = World { imgDim = (800,600), viewPlane = (8,6,8),
-                    camera = (u,v,w),
-                    eye = eye,
-                    lookAt = lookAt,
-                    surfaces = sfcs--[Sphere (0,0,0) 1]
+    world = World { imgDim = (800,600), viewPlane = (8,6,8)
+                  , camera = (u,v,w)
+                  , eye = eye
+                  , lookAt = lookAt
+                  , surfaces = sfcs--[Sphere (0,0,0) 1]
+                  , lights = lts
+                  , ambient = amb
                   }
   
-  flatten :: [(Float,Float,Float)] -> [Float]
+  flatten :: [Color] -> [Float]
   flatten [] = []
-  flatten ((x,y,z):xs) = x:y:z:flatten xs
+  flatten ((Color (x,y,z)):xs) = x:y:z:flatten xs
 
   rayTrace :: World -> Ray3 -> Color
   rayTrace world ray = color where
     World { surfaces = surfaces } = world
     intersection = maximum $ map (intersect ray) surfaces
     color = case intersection of
-              Nothing -> (0,0,0)
+              Nothing -> Color (0,0,0)
               Just hitRec -> getColor world hitRec
   
   getRay :: World -> (Int,Int) -> Ray3
@@ -110,5 +118,20 @@ module RayTracer (render,flatten) where
 
 
   getColor :: World -> HitRec -> Color
-  getColor world (HitRec (p, n, _, m)) = color where
-    color = (1, 1, 1) 
+  getColor world (HitRec (p, n, _, (a, d, s, b, r))) = color where
+    World { lights = lights 
+          , ambient = ambient
+          } = world
+    dif = mconcat $ map (getDiffuse d n p) lights
+    amb = getScaledColor a ambient 1
+    color = dif `mappend` amb
+
+  getDiffuse :: Color -> Vec3 -> Pt3 -> Light -> Color
+  getDiffuse m n pt (lp, l) = color where
+    light_dir = normalize $ subt lp pt
+    s = max 0 $ dot light_dir n
+    color = getScaledColor m l s
+
+  getScaledColor :: Color -> Color -> Float -> Color
+  getScaledColor (Color (mr, mg, mb)) (Color (lr, lg, lb)) s = 
+    Color (mr * lr * s, mg * lg * s, mb * lb * s)
