@@ -44,8 +44,13 @@ module Surfaces
     t = min t_a t_b
     pt = add (multiply dir t) base
     n = normalize $ subt pt center
-    hitRec = if discriminant <= 0 || t < 0 then Nothing else Just (HitRec (pt , n , t, color)) 
-  intersect (Ray3 ((base_x, base_y, base_z), (g, h, i))) (Triangle ta tb tc color) = hitRec where
+    hitRec = if discriminant <= 0 || t < 0 
+               then Nothing 
+               else Just (HitRec (pt , n , t, color)) 
+  {- Intersection with a triangle -}
+  intersect (Ray3 (base, dir)) (Triangle ta tb tc color) = hitRec where
+    (base_x,base_y,base_z) = base
+    (g, h, i) = dir
     (ax, ay, az) = ta
     (bx, by, bz) = tb
     (cx, cy, cz) = tc
@@ -55,7 +60,7 @@ module Surfaces
     (j, k, l) = (ax - base_x, ay - base_y, az - base_z)
     
     (ei, hf, gf, di, dh, eg) = (e*i, h*f, g*f, d*i, d*h, e*g)
-    (ak, jb, jc, al, bl, kc) = (a*k, h*b, j*c, a*l, b*l, k*c)
+    (ak, jb, jc, al, bl, kc) = (a*k, j*b, j*c, a*l, b*l, k*c)
 
     (ei_hf, gf_di, dh_eg) = (ei - hf, gf - di, dh - eg)
     (ak_jb, jc_al, bl_kc) = (ak - jb, jc - al, bl - kc)
@@ -65,12 +70,13 @@ module Surfaces
     gamma = (i*ak_jb + h*jc_al + g*bl_kc) / m
 
     t = -(f*ak_jb + e*jc_al + d*bl_kc) / m
-    pt = add ta (add (multiply (subt tb ta) beta) (multiply (subt tc ta) gamma))
+    pt = add base $ multiply dir t
     n = normalize $ cross (subt tb ta) (subt tc ta)
 
-    hitRec = if beta < 0 || beta > 1 || gamma < 0 || beta+gamma > 1-- || t < 0
+    hitRec = if gamma < 0 || gamma > 1 || beta < 0 || beta + gamma > 1 -- beta < 0 || beta > 1 || gamma < 0 || beta+gamma > 1-- || t < 0
              then Nothing 
              else Just (HitRec (pt , n , t, color)) 
+  {- Intersection with a plane -}
   intersect (Ray3 (base, dir)) (Plane a b c color) = hitRec where
     v1 = subt b a
     v2 = subt c a
@@ -84,6 +90,7 @@ module Surfaces
     hitRec = if t < 0
              then Nothing
              else Just (HitRec (pt, n, t, color))
+  {- Intersection with a box -}
   intersect (Ray3 ((bx,by,bz),(dx,dy,dz))) (Box l r b t n f) 
     | t_x0 > t_y1 || t_x0 > t_z1 || t_x1 < t_y0 || t_x1 < t_z0 ||
       t_y0 > t_z1 || t_y1 < t_z0  = Nothing

@@ -27,7 +27,7 @@ module RayTracer (render,flatten) where
   - seriously why would anyone write it like that
   -}
 
-  render :: Width -> Height -> [(Float,Float,Float)]
+  render :: Width -> Height -> [Color]
   render wd ht 
   --  | trace (show u ++ "|" ++ show v ++ "|" ++ show w) False = undefined
   --  | otherwise = map (rayTrace world) $ map (getRay world) pixels where
@@ -40,8 +40,11 @@ module RayTracer (render,flatten) where
     w = normalize $ subt eye lookAt
     u = normalize $ cross up w
     v = cross w u
-    sfcs = [ Sphere (0, 0, 0) 1 (0.5, 0.2, 0.5)
-           , Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) (0.6, 0.6, 0.6)
+    sfcs = [ Sphere (0, 0, 0) 1 (0.5, 0.2, 0.5), 
+             Sphere (4, 10, 2) 1 (0.5, 0.2, 0.5) ,
+             Sphere (4, 0, 12) 1 (0.5, 0.2, 0.5) ,
+             Sphere (14, 0, 2) 1 (0.5, 0.2, 0.5) 
+           --, Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) (0.6, 0.6, 0.6)
            , Triangle (-10, -1, -10) (10, -1, -10) (-10, 5, -10) (1, 215/255, 0)
            , Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) (1, 215/255, 0)
            , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) (1, 215/255, 0)
