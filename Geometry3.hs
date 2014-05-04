@@ -12,7 +12,7 @@ module Geometry3 where
   add (x1, y1, z1) (x2, y2, z2) = (x1+x2, y1+y2, z1+z2)
 
   subt :: Vec3 -> Vec3 -> Vec3
-  subt (x1, y1, z1) (x2, y2, z2) = (x1-x2, y1-y2, z1-z2)
+  subt (x1, y1, z1) (x2, y2, z2) = (x2-x1, y2-y1, z2-z1)
 
   multiply :: Vec3 -> Float -> Vec3
   multiply (x, y, z) f = (f*x, f*y, f*z)

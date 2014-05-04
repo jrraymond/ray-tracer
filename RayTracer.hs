@@ -47,7 +47,9 @@ module RayTracer (render,flatten) where
            , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) (1, 215/255, 0)
            , Triangle (-10, -1, -10) (-10, 5, 10) (-10, -1, 10) (1, 215/255, 0)
            ]
-    world = World { imgDim = (800,600), viewPlane = (8,6,7),
+    --sfcs = [Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) (1, 215/255, 0)]
+    --sfcs = [Sphere (0, 0, 0) 1 (0.5, 0.2, 0.5)]
+    world = World { imgDim = (800,600), viewPlane = (8,6,8),
                     camera = (u,v,w),
                     eye = eye,
                     lookAt = lookAt,
@@ -64,11 +66,13 @@ module RayTracer (render,flatten) where
     intersection = mconcat $ map (intersect ray) surfaces
     color = case intersection of
               Nothing -> (0,0,0)
-              Just (HitRec (_, _, _, c)) -> c--(1,1,1) -- if trace (show hr) False then (1,1,1) else (1,1,1)
+              Just (HitRec (_, _, t, c)) -> if trace (show t) False 
+                                            then c 
+                                            else c
   
   getRay :: World -> (Int,Int) -> Ray3
   getRay world pixel_coords 
-    | trace ("i:" ++ show i ++ " j: " ++ show j ++ "\t" ++ show (u_world,v_world,w_world) ++ "   " ++ show dir) False = undefined
+--    | trace ("i:" ++ show i ++ " j: " ++ show j ++ "\t" ++ show (u_world,v_world,w_world) ++ "   " ++ show dir) False = undefined
    | otherwise = Ray3 (base , dir) where
     World { imgDim = img_dim,
             viewPlane = (viewWd',viewHt',viewDist),

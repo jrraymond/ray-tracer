@@ -45,10 +45,10 @@ module Surfaces
     pt = add (multiply dir t) base
     n = normalize $ subt pt center
     hitRec = if discriminant <= 0 || t < 0 then Nothing else Just (HitRec (pt , n , t, color)) 
-  intersect (Ray3 ((base_x, base_y, base_z), (g, h, i))) (Triangle pt_a pt_b pt_c color) = hitRec where
-    (ax, ay, az) = pt_a
-    (bx, by, bz) = pt_b
-    (cx, cy, cz) = pt_c
+  intersect (Ray3 ((base_x, base_y, base_z), (g, h, i))) (Triangle ta tb tc color) = hitRec where
+    (ax, ay, az) = ta
+    (bx, by, bz) = tb
+    (cx, cy, cz) = tc
 
     (a, b, c) = (ax - bx, ay - by, az - bz) 
     (d, e, f) = (ax - cx, ay - cy, az - cz)
@@ -65,10 +65,10 @@ module Surfaces
     gamma = (i*ak_jb + h*jc_al + g*bl_kc) / m
 
     t = -(f*ak_jb + e*jc_al + d*bl_kc) / m
-    pt = add pt_a (add (multiply (subt pt_b pt_a) beta) (multiply (subt pt_c pt_a) gamma))
-    n = normalize $ cross (subt pt_b pt_a) (subt pt_c pt_a)
+    pt = add ta (add (multiply (subt tb ta) beta) (multiply (subt tc ta) gamma))
+    n = normalize $ cross (subt tb ta) (subt tc ta)
 
-    hitRec = if beta < 0 || beta > 1 || gamma < 0 || beta+gamma > 1 || t < 0
+    hitRec = if beta < 0 || beta > 1 || gamma < 0 || beta+gamma > 1-- || t < 0
              then Nothing 
              else Just (HitRec (pt , n , t, color)) 
   intersect (Ray3 (base, dir)) (Plane a b c color) = hitRec where
