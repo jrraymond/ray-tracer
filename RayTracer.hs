@@ -8,7 +8,6 @@ module RayTracer (render,flatten) where
 
   type Width = Int
   type Height = Int
-  --type Color = (Float , Float , Float)
 
   data World = World { imgDim :: (Width,Height)
                      , viewPlane :: (Width,Height,Float)
@@ -34,13 +33,13 @@ module RayTracer (render,flatten) where
   render wd ht 
     | trace (show $ makeBbt sfcs AxisX) False = error "fuck"
     | otherwise 
-    = map (rayTrace world) $ map (getRay world) pixels where
+    = map (rayTrace world . getRay world) pixels where
     pixels = [ (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
     --eye = (4,4,4)
-    eye = (25, 2, 25)
-    lookAt = (-1,-1,-1)
+    eye' = (25, 2, 25)
+    lookAt' = (-1,-1,-1)
     up = (0,1,0)
-    w = normalize $ subt eye lookAt
+    w = normalize $ subt eye' lookAt'
     u = normalize $ cross up w
     v = cross w u
     mat_sphere = ( Color (0.5, 0.2, 0.5)
@@ -49,12 +48,12 @@ module RayTracer (render,flatten) where
                  , 1000.0
                  , Color (0,0,0)
                  )
-    mat_plane = ( Color (0.6, 0.6, 0.6)
-                , Color (0.6, 0.6, 0.6)
-                , Color (0.0, 0.0, 0.0)
-                , 0.0
-                , Color (0.6, 0.6, 0.6)
-                )
+    --mat_plane = ( Color (0.6, 0.6, 0.6)
+    --            , Color (0.6, 0.6, 0.6)
+    --            , Color (0.0, 0.0, 0.0)
+    --            , 0.0
+    --            , Color (0.6, 0.6, 0.6)
+    --            )
     mat_triangle = ( Color (1, 215/255, 0)
                    , Color (1, 215/255, 0)
                    , Color (0, 0, 0)
@@ -79,8 +78,8 @@ module RayTracer (render,flatten) where
     --sfcs = [Sphere (0, 0, 0) 1 (0.5, 0.2, 0.5)]
     world = World { imgDim = (800,600), viewPlane = (8,6,8)
                   , camera = (u,v,w)
-                  , eye = eye
-                  , lookAt = lookAt
+                  , eye = eye'
+                  , lookAt = lookAt'
                   , surfaces = sfcs
                   , bbTree = makeBbt sfcs AxisX
                   , lights = lts
@@ -89,13 +88,12 @@ module RayTracer (render,flatten) where
   
   flatten :: [Color] -> [Float]
   flatten [] = []
-  flatten ((Color (x,y,z)):xs) = x:y:z:flatten xs
+  flatten (Color (x,y,z):xs) = x:y:z:flatten xs
 
   rayTrace :: World -> Ray3 -> Color
   rayTrace world ray = color where
-    World { surfaces = surfaces, bbTree = bbTree } = world
-    intersection = hits ray bbTree
-    color = case intersection of
+    World { bbTree = bbtree } = world
+    color = case ray `hits` bbtree of
               Nothing -> Color (0,0,0)
               Just hitRec -> getColor world hitRec
   
@@ -118,12 +116,12 @@ module RayTracer (render,flatten) where
 
 
   getColor :: World -> HitRec -> Color
-  getColor world (HitRec (p, n, _, (a, d, s, b, r))) = color where
-    World { lights = lights 
-          , ambient = ambient
+  getColor world (HitRec (p, n, _, (a, d, _, _, _))) = color where
+    World { lights = lights' 
+          , ambient = ambient'
           } = world
-    dif = mconcat $ map (getDiffuse d n p) lights
-    amb = getScaledColor a ambient 1
+    dif = mconcat $ map (getDiffuse d n p) lights'
+    amb = getScaledColor a ambient' 1
     color = dif `mappend` amb
 
   getDiffuse :: Color -> Vec3 -> Pt3 -> Light -> Color

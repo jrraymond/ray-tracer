@@ -3,7 +3,7 @@ module Surfaces
   where
   import Geometry3
   import Data.Semigroup
-  import Debug.Trace (trace)
+ -- import Debug.Trace (trace)
   import Data.List (partition)
   import Data.List.NonEmpty (NonEmpty, NonEmpty((:|)))
 
@@ -61,7 +61,7 @@ module Surfaces
       t = max ay $ max by $ max cy $ max ay' $ max by' cy'
       n = min az $ min bz $ min cz $ min az' $ min bz' cz'
       f = max az $ max bz $ max cz $ max az' $ max bz' cz'
-    t@(Triangle _ _ _ _) <> s@(Sphere _ _ _) = s <> t
+    t@Triangle{} <> s@Sphere{} = s <> t
     (Box l rt b t n f) <> (Sphere (x,y,z) r _) = Box l' rt' b' t' n' f' where
       l'  = min l (x-r)
       rt' = max rt (x+r)
@@ -76,8 +76,8 @@ module Surfaces
       t' = max t $ max ay $ max by cy
       n' = min n $ min az $ min bz cz
       f' = max f $ max az $ max bz cz
-    t@(Triangle _ _ _ _) <> b@(Box _ _ _ _ _ _) = b <> t
-    s@(Sphere _ _ _) <> b@(Box _ _ _ _ _ _) = b <> s
+    t@Triangle{} <> b@Box{} = b <> t
+    s@Sphere{} <> b@Box{} = b <> s
     _ <> _ = error "attempted to make bounding box around plane or box"
 
   toNonEmpty :: [a] -> NonEmpty a
@@ -91,7 +91,7 @@ module Surfaces
     (left,right) = partition (\shape -> getMid shape axis <= mid) sfcs
     mid = getMid bbox axis
     bbox = sconcat $ toNonEmpty sfcs
-    axis' = if axis == AxisX then AxisY else if axis == AxisY then AxisZ else AxisX
+    axis' | axis == AxisX = AxisY | axis == AxisY = AxisZ | otherwise = AxisX
 
   getMid :: Shape -> Axis -> Float
   getMid (Sphere (x,_,_) _ _) AxisX = x 
@@ -103,13 +103,14 @@ module Surfaces
   getMid (Box l r _ _ _ _) AxisX = (l+r) / 2
   getMid (Box _ _ b t _ _) AxisY = (b+t) / 2
   getMid (Box _ _ _ _ n f) AxisZ = (n+f) / 2
+  getMid _ _ = error "Cannot calculate midpoint of this surface type"
 
 
   hits :: Ray3 -> Surfaces -> Maybe HitRec
   hits _ Empty = Nothing
-  hits ray (Leaf shape) = intersect ray shape 
+  hits ray (Leaf shape) = ray `intersect` shape 
   hits ray (Node left right bbox) = 
-    case intersect ray bbox of
+    case ray `intersect` bbox of
       Nothing -> Nothing
       _ -> max (hits ray left) (hits ray right)
 
@@ -187,5 +188,4 @@ module Surfaces
                              else ((t - by) / dy , (b - by) / dy)
     (t_z0,t_z1) = if dz >= 0 then ((n - bz) / dz , (f - bz) / dz)
                              else ((f - bz) / dz , (n - bz) / dz)
-    color = Color (0,0,0)
     material = error "material undefined"

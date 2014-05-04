@@ -4,18 +4,10 @@
 -  Ray Tracer
 -}
 {-# LANGUAGE ForeignFunctionInterface #-}
-import Foreign
-import qualified Foreign.Marshal.Utils as FMU
-import qualified Data.Vector.Storable as VS
-import qualified Graphics.UI.GLUT as GLUT
-import qualified Graphics.Rendering.OpenGL as GL
-import Graphics.Rendering.OpenGL.GL.PixelRectangles.Rasterization
-import qualified Control.Monad.ST as STM
-import Data.List
-import Data.Ord
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Geometry3
+--import Foreign
+--import qualified Graphics.UI.GLUT as GLUT
+--import qualified Graphics.Rendering.OpenGL as GL
+--import Graphics.Rendering.OpenGL.GL.PixelRectangles.Rasterization
 import Surfaces
 import RayTracer
 
@@ -33,7 +25,7 @@ main = do
     --GLUT.reshapeCallback GLUT.$= Just reshape
     ----let GLUT take over
     --GLUT.mainLoop
-
+{-
 reshape :: GLUT.ReshapeCallback
 reshape size = do GLUT.viewport GLUT.$= (GLUT.Position 0 0, size)
 
@@ -49,7 +41,7 @@ display = do
     --GL.drawPixels size undefined
     --pushes our OpenGL commands down to the systems graphics for display
     GLUT.flush
-
+-}
 writePPM :: String -> Int -> Int -> [Color] -> IO ()
 writePPM name w h pixels = do writeFile name string  where 
   toStr :: Float -> String
@@ -58,7 +50,7 @@ writePPM name w h pixels = do writeFile name string  where
   f [] = ""
   f ((Color (r,g,b)):ps) = toStr r ++ toStr g ++ toStr b ++ f ps
   string = "P3\n" ++ show w ++ " " ++ show h ++ " 255\n" ++ f pixels
-
+{-
 save_ppm :: FilePath -> [[Color]] -> IO ()
 save_ppm f css = writeFile f $ make_ppm css
  
@@ -76,3 +68,4 @@ colour (Color (r,g,b)) = [channel r, channel g, channel b]
  
 channel :: Float -> Int
 channel = floor . (255*) . min 1 . max 0
+-}
