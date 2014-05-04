@@ -24,7 +24,7 @@ module Surfaces
   data Shape = Sphere Pt3 Float Color
                | Triangle Pt3 Pt3 Pt3 Color
                | Plane Pt3 Pt3 Pt3 Color
-               | Box Pt3 Pt3 Pt3 Pt3 Pt3 Pt3
+               | Box Float Float Float Float Float Float 
   type Material = ()
 
 
