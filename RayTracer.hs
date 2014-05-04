@@ -40,15 +40,33 @@ module RayTracer (render,flatten) where
     w = normalize $ subt eye lookAt
     u = normalize $ cross up w
     v = cross w u
-    sfcs = [ Sphere (3, 1, 5) 2 (0.5, 0.2, 0.5), 
-             Sphere (4, 10, 2) 1 (0.5, 0.2, 0.5) ,
-             Sphere (4, 0, 12) 1 (0.5, 0.2, 0.5) ,
-             Sphere (14, 0, 2) 1 (0.5, 0.2, 0.5) 
-           , Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) (0.6, 0.6, 0.6)
-           , Triangle (-10, -1, -10) (10, -1, -10) (-10, 5, -10) (1, 215/255, 0)
-           , Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) (1, 215/255, 0)
-           , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) (1, 215/255, 0)
-           , Triangle (-10, -1, -10) (-10, 5, 10) (-10, -1, 10) (1, 215/255, 0)
+    mat_sphere = ( (0.5, 0.2, 0.5)
+                 , (0.5, 0.2, 0.5)
+                 , (1.0, 1.0, 1.0)
+                 , 1000.0
+                 , undefined
+                 )
+    mat_plane = ( (0.6, 0.6, 0.6)
+                , (0.6, 0.6, 0.6)
+                , (0.0, 0.0, 0.0)
+                , 0.0
+                , (0.6, 0.6, 0.6)
+                )
+    mat_triangle = ( (1, 215/255, 0)
+                   , (1, 215/255, 0)
+                   , (0, 0, 0)
+                   , 0
+                   , undefined
+                   )
+    sfcs = [ Sphere (3, 1, 5) 2 mat_sphere
+           , Sphere (4, 10, 2) 1 mat_sphere
+           , Sphere (4, 0, 12) 1 mat_sphere
+           , Sphere (14, 0, 2) 1 mat_sphere
+           , Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) mat_plane
+           , Triangle (-10, -1, -10) (10, -1, -10) (-10, 5, -10) mat_triangle
+           , Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) mat_triangle
+           , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) mat_triangle
+           , Triangle (-10, -1, -10) (-10, 5, 10) (-10, -1, 10) mat_triangle
            ]
     --sfcs = [Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) (1, 215/255, 0)]
     --sfcs = [Sphere (0, 0, 0) 1 (0.5, 0.2, 0.5)]
@@ -69,7 +87,7 @@ module RayTracer (render,flatten) where
     intersection = maximum $ map (intersect ray) surfaces
     color = case intersection of
               Nothing -> (0,0,0)
-              Just (HitRec (_, _, t, c)) -> c
+              Just hitRec -> getColor world hitRec
   
   getRay :: World -> (Int,Int) -> Ray3
   getRay world pixel_coords 
@@ -89,3 +107,8 @@ module RayTracer (render,flatten) where
     v_dir = multiply v v_world
     w_dir = multiply w w_world
     dir = add w_dir $ add u_dir v_dir
+
+
+  getColor :: World -> HitRec -> Color
+  getColor world (HitRec (p, n, _, m)) = color where
+    color = (1, 1, 1) 

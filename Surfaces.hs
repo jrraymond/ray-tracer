@@ -9,20 +9,25 @@ module Surfaces
 
   data Axis = AxisX | AxisY | AxisZ deriving (Show, Eq)
   type Color = (Float , Float , Float)
-  {- Hit records have an intersection point, a normal, and a time -}  
-  newtype HitRec = HitRec (Pt3 , Vec3 , Float, Color) deriving (Show, Eq)
 
-  {- Semigroup for hitrec TODO using semigroup instead-}
+  {- Ambient, Diffuse, Specular, Blinn-Phong, Reflection -}
+  type Material = (Color, Color, Color, Float, Color)
+
+  {- Hit records have an intersection point, a normal, and a time -}  
+  newtype HitRec = HitRec (Pt3 , Vec3 , Float, Material) deriving (Show, Eq)
+
+  {- Define an ordering on hit records. We define the ordering in reverse
+   - to deal with the fact that Nothing is always less than Just -}
   instance Ord HitRec where
     h1@(HitRec (_,_,t1,_)) <= h2@(HitRec (_,_,t2,_)) = t1 >= t2
 
 
-  data Surfaces = Node Surfaces Surfaces Shape | Leaf Shape Material | Empty
-  data Shape = Sphere Pt3 Float Color
-             | Triangle Pt3 Pt3 Pt3 Color
-             | Plane Pt3 Pt3 Pt3 Color
+  data Surfaces = Node Surfaces Surfaces Shape | Leaf Shape | Empty
+  {- Todo change color to material -}
+  data Shape = Sphere Pt3 Float Material
+             | Triangle Pt3 Pt3 Pt3 Material
+             | Plane Pt3 Pt3 Pt3 Material
              | Box Float Float Float Float Float Float 
-  type Material = ()
 
   {- Shapes form a semigroup with respect to make a bounding box out of them -}
   instance Semigroup Shape where
@@ -63,7 +68,7 @@ module Surfaces
 
   makeBbt :: [Shape] -> Axis -> Surfaces
   makeBbt [] _ = Empty
-  makeBbt (s:[]) _ = Leaf s ()
+  makeBbt (s:[]) _ = Leaf s 
   makeBbt sfcs axis = Node (makeBbt left axis') (makeBbt right axis') bbox where
     (left,right) = partition (\shape -> getMid shape axis <= mid) sfcs
     mid = getMid bbox axis
@@ -96,7 +101,7 @@ module Surfaces
 
 
   hits :: Ray3 -> Surfaces -> Maybe HitRec
-  hits ray (Leaf shape material) = intersect ray shape 
+  hits ray (Leaf shape) = intersect ray shape 
   hits ray (Node left right bbox) = 
     case intersect ray bbox of
       Nothing -> Nothing
@@ -104,7 +109,7 @@ module Surfaces
 
   -- Surface intersection functions
   intersect :: Ray3 -> Shape -> Maybe HitRec
-  intersect (Ray3 (base , dir)) (Sphere center radius color) = hitRec where
+  intersect (Ray3 (base , dir)) (Sphere center radius material) = hitRec where
     ec = subt base center
     dec = dot dir ec
     dirdir = dot dir dir
@@ -120,9 +125,9 @@ module Surfaces
     n = normalize $ subt pt center
     hitRec = if discriminant <= 0 || t < 0 
                then Nothing 
-               else Just (HitRec (pt , n , t, color)) 
+               else Just (HitRec (pt , n , t, material)) 
   {- Intersection with a triangle -}
-  intersect (Ray3 (base, dir)) (Triangle ta tb tc color) = hitRec where
+  intersect (Ray3 (base, dir)) (Triangle ta tb tc material) = hitRec where
     (base_x,base_y,base_z) = base
     (g, h, i) = dir
     (ax, ay, az) = ta
@@ -150,9 +155,9 @@ module Surfaces
 
     hitRec = if gamma < 0 || gamma > 1 || beta < 0 || beta + gamma > 1 -- beta < 0 || beta > 1 || gamma < 0 || beta+gamma > 1-- || t < 0
              then Nothing 
-             else Just (HitRec (pt , n , t, color)) 
+             else Just (HitRec (pt , n , t, material)) 
   {- Intersection with a plane -}
-  intersect (Ray3 (base, dir)) (Plane a b c color) = hitRec where
+  intersect (Ray3 (base, dir)) (Plane a b c material) = hitRec where
     v1 = subt b a
     v2 = subt c a
     n = normalize $ cross v1 v2
@@ -164,16 +169,16 @@ module Surfaces
 
     hitRec = if t < 0
              then Nothing
-             else Just (HitRec (pt, n, t, color))
+             else Just (HitRec (pt, n, t, material))
   {- Intersection with a box -}
   intersect (Ray3 ((bx,by,bz),(dx,dy,dz))) (Box l r b t n f) 
     | t_x0 > t_y1 || t_x0 > t_z1 || t_x1 < t_y0 || t_x1 < t_z0 ||
       t_y0 > t_z1 || t_y1 < t_z0  = Nothing
-    | otherwise = Just (HitRec ((0,0,0),(0,0,0),0,color))  where
+    | otherwise = Just (HitRec ((0,0,0),(0,0,0),0,material))  where
     (t_x0,t_x1) = if dx >= 0 then ((l - bx) / dx , (r - bx) / dx) 
                              else ((r - bx) / dx , (l - bx) / dx)
     (t_y0,t_y1) = if dy >= 0 then ((b - by) / dy , (t - by) / dy)
                              else ((t - by) / dy , (b - by) / dy)
     (t_z0,t_z1) = if dz >= 0 then ((n - bz) / dz , (n - bz) / dz)
                              else ((f - bz) / dz , (f - bz) / dz)
-    color = (0,0,0)
+    material = undefined
