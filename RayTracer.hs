@@ -33,7 +33,8 @@ module RayTracer (render,flatten) where
   render wd ht 
     | trace (show $ makeBbt sfcs AxisX) False = error "fuck"
     | otherwise 
-    = map (rayTrace world . getRay world) pixels where
+    = map (rayTrace reflDepth world . getRay world) pixels where
+    reflDepth = 5
     pixels = [ (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
     eye' = (25, 2, 25)
     lookAt' = (-1,-1,-1)
@@ -53,11 +54,17 @@ module RayTracer (render,flatten) where
     --            , 0.0
     --            , Color (0.6, 0.6, 0.6)
     --            )
-    mat_triangle = ( Color (1, 215/255, 0)
-                   , Color (1, 215/255, 0)
-                   , Color (0, 0, 0)
-                   , 0
-                   , Color (0,0,0)
+    --mat_triangle = ( Color (1, 215/255, 0)
+    --               , Color (1, 215/255, 0)
+    --               , Color (0, 0, 0)
+    --               , 0
+    --               , Color (0,0,0)
+    --               )
+    mat_triangle = ( Color (0.6, 0.6, 0.6)
+                   , Color (0.6, 0.6, 0.6)
+                   , Color (0.0, 0.0, 0.0)
+                   , 0.0
+                   , Color (0.6, 0.6, 0.6)
                    )
     sfcs = [ Sphere (3, 1, 5) 2 mat_sphere
            , Sphere (4, 10, 2) 1 mat_sphere
@@ -89,12 +96,12 @@ module RayTracer (render,flatten) where
   flatten [] = []
   flatten (Color (x,y,z):xs) = x:y:z:flatten xs
 
-  rayTrace :: World -> Ray3 -> Color
-  rayTrace world ray = color where
+  rayTrace :: Int -> World -> Ray3 -> Color
+  rayTrace depth world ray = color where
     World { bbTree = bbtree } = world
     color = case ray `hits` bbtree of
               Nothing -> Color (0,0,0)
-              Just hitRec -> getColor world ray hitRec
+              Just hitRec -> getColor world ray hitRec depth
   
   getRay :: World -> (Int,Int) -> Ray3
   getRay world pixel_coords = Ray3 (base , dir) where
@@ -114,15 +121,23 @@ module RayTracer (render,flatten) where
     dir = add w_dir $ add u_dir v_dir
 
 
-  getColor :: World -> Ray3 -> HitRec -> Color
-  getColor world ray (HitRec (p, n, _, m@(a, _, _, _, _))) = color where
+  getColor :: World -> Ray3 -> HitRec -> Int -> Color
+  --getColor world ray (HitRec (p, n, _, m@(a, _, _, _, (Color (0, 0, 0))))) _ = color where
+  --  World { lights = lights' 
+  --        , ambient = ambient'
+  --        } = world
+  --  diff_phong = mconcat $ map (getDiffuseAndPhong ray m n p) lights'
+  --  amb = getScaledColor a ambient' 1
+  --  color = diff_phong `mappend` amb
+  getColor _ _ _ 0 = Color (0, 0, 0)
+  getColor world ray (HitRec (p, n, _, m@(a, _, _, _, r))) depth = color where
     World { lights = lights' 
           , ambient = ambient'
           } = world
-    {- Is there a way to make this one iteration over the lights? -}
-    dif = mconcat $ map (getDiffuseAndPhong ray m n p) lights'
+    refl = getScaledColor r (getReflection world ray p n depth) 1
+    diff_phong = mconcat $ map (getDiffuseAndPhong ray m n p) lights'
     amb = getScaledColor a ambient' 1
-    color = dif `mappend` amb
+    color = diff_phong `mappend` amb `mappend` refl
 
   getDiffuseAndPhong :: Ray3 -> Material -> Vec3 -> Pt3 -> Light -> Color
   getDiffuseAndPhong (Ray3 (_, dir)) (_, d, s, bp, _) n pt (lp, l) = color where
@@ -140,3 +155,8 @@ module RayTracer (render,flatten) where
   getScaledColor :: Color -> Color -> Float -> Color
   getScaledColor (Color (mr, mg, mb)) (Color (lr, lg, lb)) s = 
     Color (mr * lr * s, mg * lg * s, mb * lb * s)
+
+  getReflection :: World -> Ray3 -> Pt3 -> Vec3 -> Int -> Color
+  getReflection world (Ray3 (_, dir)) p n depth = color where
+    refRay = (Ray3 (p, subt dir $ multiply n (2 * dot dir n)))
+    color = rayTrace (depth - 1) world refRay

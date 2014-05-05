@@ -14,6 +14,7 @@ module Surfaces
     (Color (r, g, b)) `mappend` (Color (r', g', b')) = Color (r + r', g + g', b + b')
     mempty = Color (0, 0, 0)
     
+  epsilon = 0.001
 
   {- Ambient, Diffuse, Specular, Blinn-Phong, Reflection -}
   type Material = (Color, Color, Color, Float, Color)
@@ -130,7 +131,7 @@ module Surfaces
     t = min t_a t_b
     pt = add (multiply dir t) base
     n = normalize $ subt pt center
-    hitRec = if discriminant <= 0 || t < 0 
+    hitRec = if discriminant <= 0 || t < epsilon
                then Nothing 
                else Just (HitRec (pt , n , t, material)) 
   {- Intersection with a triangle -}
@@ -160,7 +161,7 @@ module Surfaces
     pt = add base $ multiply dir t
     n = normalize $ cross (subt tb ta) (subt tc ta)
 
-    hitRec = if gamma < 0 || gamma > 1 || beta < 0 || beta + gamma > 1 -- beta < 0 || beta > 1 || gamma < 0 || beta+gamma > 1-- || t < 0
+    hitRec = if gamma < 0 || gamma > 1 || beta < 0 || beta + gamma > 1 || t < epsilon-- beta < 0 || beta > 1 || gamma < 0 || beta+gamma > 1-- || t < 0
              then Nothing 
              else Just (HitRec (pt , n , t, material)) 
   {- Intersection with a plane -}
@@ -174,7 +175,7 @@ module Surfaces
     t = dot a_e n / dot dir n
     pt = add (multiply dir t) base
 
-    hitRec = if t < 0
+    hitRec = if t < epsilon
              then Nothing
              else Just (HitRec (pt, n, t, material))
   {- Intersection with a box -}
