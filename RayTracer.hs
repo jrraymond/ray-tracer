@@ -15,6 +15,7 @@ module RayTracer (render,flatten) where
                      , eye :: Pt3
                      , lookAt :: Pt3
                      , surfaces :: [Shape]
+                     , planes :: [Shape]
                      , bbTree :: Surfaces
                      , lights :: [Light]
                      , ambient :: Color
@@ -48,12 +49,12 @@ module RayTracer (render,flatten) where
                  , 1000.0
                  , Color (0,0,0)
                  )
-    --mat_plane = ( Color (0.6, 0.6, 0.6)
-    --            , Color (0.6, 0.6, 0.6)
-    --            , Color (0.0, 0.0, 0.0)
-    --            , 0.0
-    --            , Color (0.6, 0.6, 0.6)
-    --            )
+    mat_plane = ( Color (0.6, 0.6, 0.6)
+                , Color (0.6, 0.6, 0.6)
+                , Color (0.0, 0.0, 0.0)
+                , 0.0
+                , Color (0.6, 0.6, 0.6)
+                )
     mat_triangle = ( Color (1, 215/255, 0)
                    , Color (1, 215/255, 0)
                    , Color (0, 0, 0)
@@ -76,6 +77,8 @@ module RayTracer (render,flatten) where
            , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) mat_triangle
            , Triangle (-10, -1, -10) (-10, 5, 10) (-10, -1, 10) mat_triangle
            ]
+    planes' = [ Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) mat_plane 
+             ]
     lts = [ ((50, 20, 0), Color (0.5, 0.5, 0.5))
           , ((3, 2, 20), Color (0.2, 0.2, 0.2))
           ]
@@ -87,6 +90,7 @@ module RayTracer (render,flatten) where
                   , eye = eye'
                   , lookAt = lookAt'
                   , surfaces = sfcs
+                  , planes = planes'
                   , bbTree = makeBbt sfcs AxisX
                   , lights = lts
                   , ambient = amb
@@ -98,10 +102,13 @@ module RayTracer (render,flatten) where
 
   rayTrace :: Int -> World -> Ray3 -> Color
   rayTrace depth world ray = color where
-    World { bbTree = bbtree } = world
-    color = case ray `hits` bbtree of
-              Nothing -> Color (0,0,0)
-              Just hitRec -> getColor world ray hitRec depth
+    World { bbTree = bbtree 
+          , planes = planes'
+          } = world
+    hit = max (ray `hits` bbtree) (ray `planeHits` planes')
+    color = case hit of
+            Nothing -> Color (0,0,0)
+            Just hitRec -> getColor world ray hitRec depth
   
   getRay :: World -> (Int,Int) -> Ray3
   getRay world pixel_coords = Ray3 (base , dir) where

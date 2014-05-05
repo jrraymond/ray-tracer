@@ -116,6 +116,10 @@ module Surfaces
       Nothing -> Nothing
       _ -> max (hits ray left) (hits ray right)
 
+  planeHits :: Ray3 -> [Shape] -> Maybe HitRec
+  planeHits _ [] = Nothing
+  planeHits ray (p:planes) = max (ray `intersect` p) $ planeHits ray planes
+
   -- Surface intersection functions
   intersect :: Ray3 -> Shape -> Maybe HitRec
   intersect (Ray3 (base , dir)) (Sphere center radius material) = hitRec where
