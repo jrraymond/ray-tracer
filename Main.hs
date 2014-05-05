@@ -47,7 +47,7 @@ writePPM name w h pixels = do writeFile name string  where
   toStr = (++ " ") . show . truncate . (255*)
   f :: [Color] -> String
   f [] = ""
-  f ((Color (r,g,b)):ps) = toStr r ++ toStr g ++ toStr b ++ f ps
+  f ((Color r g b):ps) = toStr r ++ toStr g ++ toStr b ++ f ps
   string = "P3\n" ++ show w ++ " " ++ show h ++ " 255\n" ++ f pixels
 {-
 save_ppm :: FilePath -> [[Color]] -> IO ()

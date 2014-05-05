@@ -8,11 +8,11 @@ module Surfaces
   import Data.List.NonEmpty (NonEmpty, NonEmpty((:|)))
 
   data Axis = AxisX | AxisY | AxisZ deriving (Show, Eq)
-  newtype Color = Color (Float , Float , Float) deriving (Show, Eq)
+  data Color = Color !Float !Float !Float deriving (Show, Eq)
 
   instance Monoid Color where
-    (Color (r, g, b)) `mappend` (Color (r', g', b')) = Color (r + r', g + g', b + b')
-    mempty = Color (0, 0, 0)
+    (Color r g b) `mappend` (Color r' g' b') = Color (r + r') (g + g') (b + b')
+    mempty = Color 0 0 0
     
   epsilon :: Float
   epsilon = 0.001
@@ -30,13 +30,13 @@ module Surfaces
 
   type Light = (Pt3, Color)
 
-  data Surfaces = Node Surfaces Surfaces Shape | Leaf Shape | Empty
+  data Surfaces = Node !Surfaces !Surfaces !Shape | Leaf !Shape | Empty
     deriving Show
   {- Todo change color to material -}
-  data Shape = Sphere Pt3 Float Material
-             | Triangle Pt3 Pt3 Pt3 Material
-             | Plane Pt3 Pt3 Pt3 Material
-             | Box Float Float Float Float Float Float 
+  data Shape = Sphere !Pt3 !Float !Material
+             | Triangle !Pt3 !Pt3 !Pt3 !Material
+             | Plane !Pt3 !Pt3 !Pt3 !Material
+             | Box !Float !Float !Float !Float !Float !Float 
      deriving Show        
 
   {- Shapes form a semigroup with respect to make a bounding box out of them -}

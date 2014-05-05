@@ -60,13 +60,13 @@ executable ray-tracer
   -- other-extensions:    
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.5, 
-                       containers >= 0.5.0.0,
-                       array >= 0.4.0.1,
-                       OpenGL >= 2.8.0.0,
-                       GLUT >= 2.4.0.0,
-                       vector >= 0.10.0.1,
-                       semigroups >= 0.13.0.0
+  build-depends:       base >= 4.5 
+                     , containers >= 0.5.0.0
+                     , array >= 0.4.0.1
+                     , OpenGL >= 2.8.0.0
+                     , GLUT >= 2.4.0.0
+                     , vector >= 0.10.0.1
+                     , semigroups >= 0.13.0.0
           
   GHC-Options: -Wall                      
   
