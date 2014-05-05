@@ -14,6 +14,7 @@ module Surfaces
     (Color (r, g, b)) `mappend` (Color (r', g', b')) = Color (r + r', g + g', b + b')
     mempty = Color (0, 0, 0)
     
+  epsilon :: Float
   epsilon = 0.001
 
   {- Ambient, Diffuse, Specular, Blinn-Phong, Reflection -}
