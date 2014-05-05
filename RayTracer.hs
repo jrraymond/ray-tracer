@@ -162,9 +162,9 @@ module RayTracer (render,flatten) where
               {- Blinn Phong contribution -}
               rev_dir = normalize $ multiply dir (-1.0)
               half = normalize $ add rev_dir light_dir
-              phong_scale = (max 0 $ dot half n) ** bp
+              phong_scale = max 0 $ dot half n ** bp
 
-              diffuse = (getScaledColor d l diff_scale) `mappend` (getScaledColor s l phong_scale)
+              diffuse = getScaledColor d l diff_scale `mappend` getScaledColor s l phong_scale
 
   getScaledColor :: Color -> Color -> Float -> Color
   getScaledColor (Color mr mg mb) (Color lr lg lb) s = 
@@ -172,5 +172,5 @@ module RayTracer (render,flatten) where
 
   getReflection :: World -> Ray3 -> Pt3 -> Vec3 -> Int -> Color
   getReflection world (Ray3 (_, dir)) p n depth = color where
-    refRay = (Ray3 (p, subt dir $ multiply n (2 * dot dir n)))
+    refRay = Ray3 (p, subt dir $ multiply n (2 * dot dir n))
     color = rayTrace (depth - 1) world [refRay]
