@@ -21,12 +21,12 @@ module Surfaces
   type Material = (Color, Color, Color, Float, Color)
 
   {- Hit records have an intersection point, a normal, and a time -}  
-  newtype HitRec = HitRec (Pt3 , Vec3 , Float, Material) deriving (Show, Eq)
+  data HitRec = HitRec !Pt3 !Vec3 !Float !Material deriving (Show, Eq)
 
   {- Define an ordering on hit records. We define the ordering in reverse
    - to deal with the fact that Nothing is always less than Just -}
   instance Ord HitRec where
-    HitRec (_,_,t1,_) <= HitRec (_,_,t2,_) = t1 >= t2
+    HitRec _ _ t1 _ <= HitRec _ _ t2 _ = t1 >= t2
 
   type Light = (Pt3, Color)
 
@@ -138,7 +138,7 @@ module Surfaces
     n = normalize $ subt pt center
     hitRec = if discriminant <= 0 || t < epsilon
                then Nothing 
-               else Just (HitRec (pt , n , t, material)) 
+               else Just (HitRec pt n t material) 
   {- Intersection with a triangle -}
   intersect (Ray3 (base, dir)) (Triangle ta tb tc material) = hitRec where
     (base_x,base_y,base_z) = base
@@ -168,7 +168,7 @@ module Surfaces
 
     hitRec = if gamma < 0 || gamma > 1 || beta < 0 || beta + gamma > 1 || t < epsilon-- beta < 0 || beta > 1 || gamma < 0 || beta+gamma > 1-- || t < 0
              then Nothing 
-             else Just (HitRec (pt , n , t, material)) 
+             else Just (HitRec pt n t material) 
   {- Intersection with a plane -}
   intersect (Ray3 (base, dir)) (Plane a b c material) = hitRec where
     v1 = subt b a
@@ -182,12 +182,12 @@ module Surfaces
 
     hitRec = if t < epsilon
              then Nothing
-             else Just (HitRec (pt, n, t, material))
+             else Just (HitRec pt n t material)
   {- Intersection with a box -}
   intersect (Ray3 ((bx,by,bz),(dx,dy,dz))) (Box l r b t n f) 
     | t_x0 > t_y1 || t_x0 > t_z1 || t_x1 < t_y0 || t_x1 < t_z0 ||
       t_y0 > t_z1 || t_y1 < t_z0  = Nothing
-    | otherwise = Just (HitRec ((0,0,0),(0,0,0),0,material))  where
+    | otherwise = Just (HitRec (0,0,0) (0,0,0) 0 material)  where
     (t_x0,t_x1) = if dx >= 0 then ((l - bx) / dx , (r - bx) / dx) 
                              else ((r - bx) / dx , (l - bx) / dx)
     (t_y0,t_y1) = if dy >= 0 then ((b - by) / dy , (t - by) / dy)

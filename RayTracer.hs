@@ -138,7 +138,7 @@ module RayTracer (render,flatten) where
   
   getColor :: World -> Ray3 -> HitRec -> Int -> Color
   getColor _ _ _ 0 = Color 0 0 0
-  getColor world ray (HitRec (p, n, _, m@(a, _, _, _, r))) depth = color where
+  getColor world ray (HitRec p n _ m@(a, _, _, _, r)) depth = color where
     World { lights = lights' 
           , ambient = ambient'
           , bbTree = bbTree'
