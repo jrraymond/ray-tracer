@@ -94,7 +94,7 @@ module RayTracer (render,flatten) where
     World { bbTree = bbtree } = world
     color = case ray `hits` bbtree of
               Nothing -> Color (0,0,0)
-              Just hitRec -> getColor world hitRec
+              Just hitRec -> getColor world ray hitRec
   
   getRay :: World -> (Int,Int) -> Ray3
   getRay world pixel_coords = Ray3 (base , dir) where
@@ -114,20 +114,28 @@ module RayTracer (render,flatten) where
     dir = add w_dir $ add u_dir v_dir
 
 
-  getColor :: World -> HitRec -> Color
-  getColor world (HitRec (p, n, _, (a, d, _, _, _))) = color where
+  getColor :: World -> Ray3 -> HitRec -> Color
+  getColor world ray (HitRec (p, n, _, m@(a, _, _, _, _))) = color where
     World { lights = lights' 
           , ambient = ambient'
           } = world
-    dif = mconcat $ map (getDiffuse d n p) lights'
+    {- Is there a way to make this one iteration over the lights? -}
+    dif = mconcat $ map (getDiffuseAndPhong ray m n p) lights'
     amb = getScaledColor a ambient' 1
     color = dif `mappend` amb
 
-  getDiffuse :: Color -> Vec3 -> Pt3 -> Light -> Color
-  getDiffuse m n pt (lp, l) = color where
+  getDiffuseAndPhong :: Ray3 -> Material -> Vec3 -> Pt3 -> Light -> Color
+  getDiffuseAndPhong (Ray3 (_, dir)) (_, d, s, bp, _) n pt (lp, l) = color where
+    {- Diffuse contrinution -}
     light_dir = normalize $ subt lp pt
-    s = max 0 $ dot light_dir n
-    color = getScaledColor m l s
+    diff_scale = max 0 $ dot light_dir n
+
+    {- Blinn Phong contribution -}
+    rev_dir = normalize $ multiply dir (-1.0)
+    half = normalize $ add rev_dir light_dir
+    phong_scale = (max 0 $ dot half n) ** bp
+
+    color = (getScaledColor d l diff_scale) `mappend` (getScaledColor s l phong_scale)
 
   getScaledColor :: Color -> Color -> Float -> Color
   getScaledColor (Color (mr, mg, mb)) (Color (lr, lg, lb)) s = 
