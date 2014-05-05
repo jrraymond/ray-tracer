@@ -54,18 +54,18 @@ module RayTracer (render,flatten) where
     --            , 0.0
     --            , Color (0.6, 0.6, 0.6)
     --            )
-    --mat_triangle = ( Color (1, 215/255, 0)
-    --               , Color (1, 215/255, 0)
-    --               , Color (0, 0, 0)
-    --               , 0
-    --               , Color (0,0,0)
-    --               )
-    mat_triangle = ( Color (0.6, 0.6, 0.6)
-                   , Color (0.6, 0.6, 0.6)
-                   , Color (0.0, 0.0, 0.0)
-                   , 0.0
-                   , Color (0.6, 0.6, 0.6)
+    mat_triangle = ( Color (1, 215/255, 0)
+                   , Color (1, 215/255, 0)
+                   , Color (0, 0, 0)
+                   , 0
+                   , Color (0,0,0)
                    )
+    --mat_triangle = ( Color (0.6, 0.6, 0.6)
+    --               , Color (0.6, 0.6, 0.6)
+    --               , Color (0.0, 0.0, 0.0)
+    --               , 0.0
+    --               , Color (0.6, 0.6, 0.6)
+    --               )
     sfcs = [ Sphere (3, 1, 5) 2 mat_sphere
            , Sphere (4, 10, 2) 1 mat_sphere
            , Sphere (4, 0, 12) 1 mat_sphere
@@ -122,35 +122,34 @@ module RayTracer (render,flatten) where
 
 
   getColor :: World -> Ray3 -> HitRec -> Int -> Color
-  --getColor world ray (HitRec (p, n, _, m@(a, _, _, _, (Color (0, 0, 0))))) _ = color where
-  --  World { lights = lights' 
-  --        , ambient = ambient'
-  --        } = world
-  --  diff_phong = mconcat $ map (getDiffuseAndPhong ray m n p) lights'
-  --  amb = getScaledColor a ambient' 1
-  --  color = diff_phong `mappend` amb
   getColor _ _ _ 0 = Color (0, 0, 0)
   getColor world ray (HitRec (p, n, _, m@(a, _, _, _, r))) depth = color where
     World { lights = lights' 
           , ambient = ambient'
+          , bbTree = bbTree'
           } = world
     refl = getScaledColor r (getReflection world ray p n depth) 1
-    diff_phong = mconcat $ map (getDiffuseAndPhong ray m n p) lights'
+    diff_phong = mconcat $ map (getDiffuseAndPhong ray m n p bbTree') lights'
     amb = getScaledColor a ambient' 1
     color = diff_phong `mappend` amb `mappend` refl
 
-  getDiffuseAndPhong :: Ray3 -> Material -> Vec3 -> Pt3 -> Light -> Color
-  getDiffuseAndPhong (Ray3 (_, dir)) (_, d, s, bp, _) n pt (lp, l) = color where
-    {- Diffuse contrinution -}
+  getDiffuseAndPhong :: Ray3 -> Material -> Vec3 -> Pt3 -> Surfaces -> Light -> Color
+  getDiffuseAndPhong (Ray3 (_, dir)) (_, d, s, bp, _) n pt bbtree (lp, l) = color where
+
     light_dir = normalize $ subt lp pt
-    diff_scale = max 0 $ dot light_dir n
+    light_ray = Ray3 (pt, light_dir)
+    {- Check for shadows -}
+    color = case light_ray `hits` bbtree of
+            Just _ -> Color (0,0,0)
+            Nothing -> diffuse where
+              diff_scale = max 0 $ dot light_dir n
 
-    {- Blinn Phong contribution -}
-    rev_dir = normalize $ multiply dir (-1.0)
-    half = normalize $ add rev_dir light_dir
-    phong_scale = (max 0 $ dot half n) ** bp
+              {- Blinn Phong contribution -}
+              rev_dir = normalize $ multiply dir (-1.0)
+              half = normalize $ add rev_dir light_dir
+              phong_scale = (max 0 $ dot half n) ** bp
 
-    color = (getScaledColor d l diff_scale) `mappend` (getScaledColor s l phong_scale)
+              diffuse = (getScaledColor d l diff_scale) `mappend` (getScaledColor s l phong_scale)
 
   getScaledColor :: Color -> Color -> Float -> Color
   getScaledColor (Color (mr, mg, mb)) (Color (lr, lg, lb)) s = 
