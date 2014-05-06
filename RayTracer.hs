@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE BangPatterns #-}
 module RayTracer (render,flatten) where
   import Surfaces
   import Geometry3
@@ -30,7 +31,7 @@ module RayTracer (render,flatten) where
     | trace (show $ makeBbt sfcs AxisX) False = error "fuck"
     | otherwise 
     = map (rayTrace reflDepth world . getRays world) pixels where
-    reflDepth = 5
+    reflDepth = 2
     pixels = [ (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
     eye' = (-4, 4, 7)
     lookAt' = (8,4,1)
@@ -56,12 +57,18 @@ module RayTracer (render,flatten) where
                     , 100.0
                     , Color 1 1 1
                     )
-    mat_red_tri= ( Color 1 0 0
-                 , Color 1 0 0
-                 , Color 0.6 0.6 0.6
-                 , 100.0
-                 , Color 1 1 1
-                 )
+    mat_red_tri = ( Color 1 0 0
+                  , Color 1 0 0
+                  , Color 0.6 0.6 0.6
+                  , 100.0
+                  , Color 1 1 1
+                  )
+    mat_white_tri = ( Color 1 1 1
+                    , Color 1 1 1
+                    , Color 0.4 0.4 0.4
+                    , 10
+                    , Color 0 0 0
+                    )
     --mat_triangle = ( Color 1 (215/255) 0
     --               , Color 1 (215/255) 0
     --               , Color 0 0 0
@@ -91,13 +98,27 @@ module RayTracer (render,flatten) where
     --      ]
     sfcs = (Sphere (6, 6, 1.76) 0.75 mat_sphere):
            (Sphere (5, 2, 1.76) 0.75 mat_sphere):
-           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [0,2..7], y <- [0,2..7] ]
+           {-
+           (Triangle (0, 0, -1) (0, 0, 0.9) (0, 6, 0.9) mat_white_tri):
+           (Triangle (0, 6, 0.9) (0, 6, -1) (0, 0, -1) mat_white_tri):
+           (Triangle (6, 6, 1) (6, 0, 1) (6, 0, -1) mat_white_tri):
+           (Triangle (6, 0, -1) (6, 6, -1) (6, 6, 1) mat_white_tri):
+           -}
+           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [0,2..6], y <- [0,2..6] ]
            ++
-           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri| x <- [1,3..7], y <- [1,3..7] ]
+           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [0,2..6], y <- [0,2..6] ]
            ++
-           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [0,2..7], y <- [0,2..7] ]
+           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [1,3..7], y <- [1,3..7] ]
            ++
-           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri| x <- [1,3..7], y <- [1,3..7] ]
+           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [1,3..7], y <- [1,3..7] ]
+           ++
+           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [1,3..7], y <- [0,2..6] ]
+           ++
+           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [1,3..7], y <- [0,2..6] ]
+           ++
+           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [0,2..6], y <- [1,3..7] ]
+           ++
+           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [0,2..6], y <- [1,3..7] ]
            
     planes' = [ Plane (0, 0, -1.0) (1, 0, -1) (1, 1, -1) mat_plane ]
     amb = Color 0.1 0.1 0.1
