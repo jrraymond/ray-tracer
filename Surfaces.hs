@@ -4,7 +4,6 @@ module Surfaces
   import Geometry3
   import Data.Semigroup
  -- import Debug.Trace (trace)
-  import Data.List (partition)
   import Data.List.NonEmpty (NonEmpty, NonEmpty((:|)))
 
   data Axis = AxisX | AxisY | AxisZ deriving (Show, Eq)
@@ -89,12 +88,21 @@ module Surfaces
   makeBbt :: [Shape] -> Axis -> Surfaces
   makeBbt [] _ = Empty
   makeBbt (s:[]) _ = Leaf s 
-  makeBbt sfcs axis = Node (makeBbt left axis') (makeBbt right axis') bbox where
-    (left,right) = partition (\shape -> getMid shape axis <= mid) sfcs
+  makeBbt shapes axis = Node (makeBbt left axis') (makeBbt right axis') bbox where
+    (left,right) = partition' shapes mid axis
     mid = getMid bbox axis
-    bbox = sconcat $ toNonEmpty sfcs
+    bbox = sconcat $ toNonEmpty shapes
     axis' | axis == AxisX = AxisY | axis == AxisY = AxisZ | otherwise = AxisX
-
+  
+  partition' :: [Shape] -> Float -> Axis -> ([Shape],[Shape])
+  partition' ss mid axis = f ss 0.001 ([],[]) where
+    f :: [Shape] -> Float -> ([Shape],[Shape]) -> ([Shape],[Shape]) 
+    f [] _ ps = ps
+    f (x:xs) jit (as,bs)
+      | m <= mid = f xs jit' (x:as,bs)
+      | otherwise = f xs jit' (as,x:bs) where
+       jit' = -1*jit
+       m = jit + getMid x axis
   getMid :: Shape -> Axis -> Float
   getMid (Sphere (x,_,_) _ _) AxisX = x 
   getMid (Sphere (_,y,_) _ _) AxisY = y 
