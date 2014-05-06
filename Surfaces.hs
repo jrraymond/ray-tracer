@@ -3,7 +3,7 @@ module Surfaces
   where
   import Geometry3
   import Data.Semigroup
- -- import Debug.Trace (trace)
+  import Debug.Trace (trace)
   import Data.List.NonEmpty (NonEmpty, NonEmpty((:|)))
 
   data Axis = AxisX | AxisY | AxisZ deriving (Show, Eq)
@@ -88,9 +88,11 @@ module Surfaces
   makeBbt :: [Shape] -> Axis -> Surfaces
   makeBbt [] _ = Empty
   makeBbt (s:[]) _ = Leaf s 
-  makeBbt shapes axis = Node (makeBbt left axis') (makeBbt right axis') bbox where
+  makeBbt shapes axis 
+    | trace (show mid ++ " || " ++ show shapes) False = error "fuck"
+    | otherwise = Node (makeBbt left axis') (makeBbt right axis') bbox where
     (left,right) = partition' shapes mid axis
-    mid = getMid bbox axis
+    mid = foldr ((+) . flip getMid axis) 0.0 shapes / fromIntegral (length shapes)
     bbox = sconcat $ toNonEmpty shapes
     axis' | axis == AxisX = AxisY | axis == AxisY = AxisZ | otherwise = AxisX
   

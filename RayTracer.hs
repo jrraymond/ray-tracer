@@ -21,6 +21,7 @@ module RayTracer (render,flatten) where
                      , lights :: [Light]
                      , ambient :: Color
                      , antialiasing :: Int
+                     , softshadows :: Int
                      }
 
   mapT :: (a -> b) -> (a,a) -> (b,b)
@@ -28,8 +29,8 @@ module RayTracer (render,flatten) where
 
   render :: Width -> Height -> [Color]
   render wd ht 
-    | trace (show $ makeBbt sfcs AxisX) False = error "fuck"
-    | otherwise 
+     | trace (show $ makeBbt sfcs AxisX) False = error "fuck"
+     | otherwise 
     = map (rayTrace reflDepth world . getRays world) pixels where
     reflDepth = 2
     pixels = [ (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
@@ -96,16 +97,14 @@ module RayTracer (render,flatten) where
     --lts = [ ((50, 20, 0), Color 0.5 0.5 0.5)
     --      , ((3, 2, 20), Color 0.2 0.2 0.2)
     --      ]
-    sfcs = (Sphere (6, 6, 1.76) 0.75 mat_sphere):
-           (Sphere (5, 2, 1.76) 0.75 mat_sphere):
-           {-
-           (Triangle (0, 0, -1) (0, 0, 0.9) (0, 6, 0.9) mat_white_tri):
-           (Triangle (0, 6, 0.9) (0, 6, -1) (0, 0, -1) mat_white_tri):
-           (Triangle (6, 6, 1) (6, 0, 1) (6, 0, -1) mat_white_tri):
-           (Triangle (6, 0, -1) (6, 6, -1) (6, 6, 1) mat_white_tri):
-           -}
+    sfcs = Sphere (6, 6, 1.76) 0.75 mat_sphere:
+           Sphere (5, 2, 1.76) 0.75 mat_sphere: 
+           Triangle (0, 0, -1) (0, 0, 0.9) (0, 6, 0.9) mat_white_tri:
+           Triangle (0, 6, 0.9) (0, 6, -1) (0, 0, -1) mat_white_tri:
+           Triangle (6, 6, 1) (6, 0, 1) (6, 0, -1) mat_white_tri:
+           Triangle (6, 0, -1) (6, 6, -1) (6, 6, 1) mat_white_tri:
            [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [0,2], y <- [0,2] ]
-           ++
+           ++ 
            [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [0,2], y <- [0,2] ]
            ++
            [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [1,3], y <- [1,3] ]
@@ -118,7 +117,7 @@ module RayTracer (render,flatten) where
            ++
            [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [0,2], y <- [1,3] ]
            ++
-           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [0,2], y <- [1,3] ]
+           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [0,2], y <- [1,3] ] 
            
     planes' = [ Plane (0, 0, -1.0) (1, 0, -1) (1, 1, -1) mat_plane ]
     amb = Color 0.1 0.1 0.1
@@ -137,7 +136,8 @@ module RayTracer (render,flatten) where
                   , bbTree = makeBbt sfcs AxisX
                   , lights = lts
                   , ambient = amb
-                  , antialiasing = 3
+                  , antialiasing = 1 --1 for none, 3 is good
+                  , softshadows = 0 --1 for none
                   }
 
   flatten :: [Color] -> [Float]
@@ -163,6 +163,7 @@ module RayTracer (render,flatten) where
     f :: [Color] -> Color -> Float -> Color
     f [] (Color r g b) n = Color (r/n) (g/n) (b/n)
     f (Color r' g' b':xs) (Color r g b) n = f xs (Color (r+r') (g+g') (b+b')) (n+1)
+
   getRays :: World -> (Int,Int) -> [Ray3]
   getRays world pixel_coords = rays where
     World { imgDim = img_dim
@@ -190,19 +191,21 @@ module RayTracer (render,flatten) where
     World { lights = lights' 
           , ambient = ambient'
           , bbTree = bbTree'
+          , softshadows = shdwRays
           } = world
     refl = getScaledColor r (getReflection world ray p n depth) 1
-    diff_phong = mconcat $ map (getDiffuseAndPhong ray m n p bbTree') lights'
+    diff_phong = mconcat $ map (getDiffuseAndPhong shdwRays ray m n p bbTree') lights'
     amb = getScaledColor a ambient' 1
     color = diff_phong `mappend` amb `mappend` refl
 
-  getDiffuseAndPhong :: Ray3 -> Material -> Vec3 -> Pt3 -> Surfaces -> Light -> Color
-  getDiffuseAndPhong (Ray3 (_, dir)) (_, d, s, bp, _) n pt bbtree (lp, l) = color where
-
+  getDiffuseAndPhong :: Int -> Ray3 -> Material -> Vec3 -> Pt3 -> Surfaces -> Light -> Color
+  getDiffuseAndPhong shdwRays (Ray3 (_, dir)) (_, d, s, bp, _) n pt bbtree (lp, l) 
+    | shdwRays == 0 = color 
+    | otherwise = ss_color where
     light_dir = normalize $ subt lp pt
     light_ray = Ray3 (pt, light_dir)
     {- Check for shadows -}
-    color = case light_ray `hits` bbtree of
+    color = case light_ray `hits` bbtree of --f light_ray bbtree light_dir dir n bp d l s
             Just _ -> Color 0 0 0
             Nothing -> diffuse where
               diff_scale = max 0 $ dot light_dir n
@@ -213,7 +216,31 @@ module RayTracer (render,flatten) where
               phong_scale = max 0 $ dot half n ** bp
 
               diffuse = getScaledColor d l diff_scale `mappend` getScaledColor s l phong_scale
+    {- Check to see if near edge of a shadow -}
+    {-NOTE calculating pseudo random points as per
+    - http://www.altdevblogaday.com/2012/05/03/generating-uniformly-distributed-points-on-sphere/
+    - http://www.cse.cuhk.edu.hk/~ttwong/papers/udpoint/udpoint.pdf
+    -
+    pts = [ (x,y,z) | let zs = map (/4) [-4..4] :: [Float]
+                          rs = map (\a -> sqrt (1 - a*a)) zs,
+                      z <- zs,
+                      t <- map (/(2*pi)) [0..(2*pi)],
+                      x <- map (\a -> a * cos t) rs,
+                      y <- map (\a -> a * sin t) rs ] -}
+    ss_color = error "ss undefined" --mconcat (map (pt
+    {-f ray bbtree light_dir dir n bp d l s = 
+      case ray `hits` bbtree of 
+            Just _ -> Color 0 0 0
+            Nothing -> diffuse where
+              diff_scale = max 0 $ dot light_dir n
 
+              {- Blinn Phong contribution -}
+              rev_dir = normalize $ multiply dir (-1.0)
+              half = normalize $ add rev_dir light_dir
+              phong_scale = max 0 $ dot half n ** bp
+
+              diffuse = getScaledColor d l diff_scale `mappend` getScaledColor s l phong_scale
+-}
   getScaledColor :: Color -> Color -> Float -> Color
   getScaledColor (Color mr mg mb) (Color lr lg lb) s = 
     Color (mr * lr * s) (mg * lg * s) (mb * lb * s)
