@@ -99,25 +99,31 @@ module RayTracer (render,flatten) where
     --      ]
     sfcs = Sphere (6, 6, 1.76) 0.75 mat_sphere:
            Sphere (5, 2, 1.76) 0.75 mat_sphere: 
-           Triangle (0, 0, -1) (0, 0, 0.9) (0, 6, 0.9) mat_white_tri:
-           Triangle (0, 6, 0.9) (0, 6, -1) (0, 0, -1) mat_white_tri:
-           Triangle (6, 6, 1) (6, 0, 1) (6, 0, -1) mat_white_tri:
-           Triangle (6, 0, -1) (6, 6, -1) (6, 6, 1) mat_white_tri:
-           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [0,2], y <- [0,2] ]
+           Triangle (0, 0, -1) (0, 0, 1) (0, 8, 1) mat_white_tri:
+           Triangle (0, 8, 1) (0, 8, -1) (0, 0, -1) mat_white_tri:
+           Triangle (8, 8, 1) (8, 0, 1) (8, 0, -1) mat_white_tri:
+           Triangle (8, 0, -1) (8, 8, -1) (8, 8, 1) mat_white_tri:
+
+           Triangle (0, 0, -1) (0, 0, 1) (8, 0, 1) mat_white_tri:
+           Triangle (8, 0, 1) (8, 0, -1) (0, 0, -1) mat_white_tri:
+           Triangle (8, 8, 1) (0, 8, 1) (0, 8, -1) mat_white_tri:
+           Triangle (0, 8, -1) (8, 8, -1) (8, 8, 1) mat_white_tri:
+
+           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [0,2..6], y <- [0,2..6] ]
            ++ 
-           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [0,2], y <- [0,2] ]
+           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [0,2..6], y <- [0,2..6] ]
            ++
-           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [1,3], y <- [1,3] ]
+           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [1,3..7], y <- [1,3..7] ]
            ++
-           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [1,3], y <- [1,3] ]
+           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [1,3..7], y <- [1,3..7] ]
            ++
-           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [1,3], y <- [0,2] ]
+           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [1,3..7], y <- [0,2..6] ]
            ++
-           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [1,3], y <- [0,2] ]
+           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [1,3..7], y <- [0,2..6] ]
            ++
-           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [0,2], y <- [1,3] ]
+           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [0,2..6], y <- [1,3..7] ]
            ++
-           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [0,2], y <- [1,3] ] 
+           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [0,2..6], y <- [1,3..7] ] 
            
     planes' = [ Plane (0, 0, -1.0) (1, 0, -1) (1, 1, -1) mat_plane ]
     amb = Color 0.1 0.1 0.1
