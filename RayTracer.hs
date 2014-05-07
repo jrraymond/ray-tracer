@@ -80,35 +80,19 @@ module RayTracer (render,flatten) where
                     , 1
                     , Color 1 1 1
                     )
-    --mat_triangle = ( Color 1 (215/255) 0
-    --               , Color 1 (215/255) 0
-    --               , Color 0 0 0
-    --               , 0
-    --               , Color 0 0 0
-    --               )
-    ----mat_triangle = ( Color (0.6, 0.6, 0.6)
-    ----               , Color (0.6, 0.6, 0.6)
-    ----               , Color (0.0, 0.0, 0.0)
-    ----               , 0.0
-    ----               , Color (0.6, 0.6, 0.6)
-    ----               )
-    --sfcs = [ Sphere (3, 1, 5) 2 mat_sphere
-    --       --, Sphere (4, 10, 2) 1 mat_sphere
-    --       --, Sphere (4, 0, 12) 1 mat_sphere
-    --       --, Sphere (14, 0, 2) 1 mat_sphere
-    --     ----  , Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) mat_plane
-    --       , Triangle (-10, -1, -10) (10, -1, -10) (-10, 5, -10) mat_triangle
-    --       , Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) mat_triangle
-    --       , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) mat_triangle
-    --       , Triangle (-10, -1, -10) (-10, 5, 10) (-10, -1, 10) mat_triangle
-    --       ]
-    --planes' = [ Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) mat_plane 
-    --         ]
-    --lts = [ ((50, 20, 0), Color 0.5 0.5 0.5)
-    --      , ((3, 2, 20), Color 0.2 0.2 0.2)
-    --      ]
+    mat_glass = ( Color 0 0 1
+                , Color 0 0 1
+                , Color 0.6 0.6 0.6
+                , 10
+                , Color 1 1 1
+                , 2.3
+                , Color 0 1 0
+                )
     sfcs = Sphere (6, 6, 1.76) 0.75 mat_sphere:
            Sphere (5, 2, 1.76) 0.75 mat_sphere: 
+
+           Sphere (3, 3, 3) 2 mat_glass:
+
            Triangle (0, 0, -1) (0, 0, 1) (0, 8, 1) mat_white_tri:
            Triangle (0, 8, 1) (0, 8, -1) (0, 0, -1) mat_white_tri:
            Triangle (8, 8, 1) (8, 0, 1) (8, 0, -1) mat_white_tri:
@@ -203,13 +187,13 @@ module RayTracer (render,flatten) where
   
   getColor :: World -> Ray3 -> HitRec -> Int -> Color
   getColor _ _ _ 0 = Color 0 0 0
-  getColor world ray hit@(HitRec p n _ m@(a, _, _, _, r, i, rf)) depth = color where
+  getColor world ray (HitRec p n _ m@(a, _, _, _, r, i, rf)) depth = color where
     World { lights = lights' 
           , ambient = ambient'
           , bbTree = bbTree'
           , softshadows = shdwRays
           } = world
-    refr = getRefraction world hit ray p n i rf
+    refr = getRefraction world ray p n i rf
     refl = getScaledColor r (getReflection world ray p n depth) 1
     diff_phong = mconcat $ map (getDiffuseAndPhong shdwRays ray m n p bbTree') lights'
     amb = getScaledColor a ambient' 1
@@ -268,9 +252,9 @@ module RayTracer (render,flatten) where
     color = rayTrace (depth - 1) world [refRay]
   
   {- TODO: fix the kr, kg, kg constants. Figure out what non-vector t is exactly -}
-  getRefraction :: World -> HitRec -> Ray3 -> Pt3 -> Vec3 -> Float -> Color -> Color
-  getRefraction _ _ _ _ _ 1 _ = (Color 0 0 0)
-  getRefraction world hit (Ray3 (_, dir)) p n i (Color ar ag ab) = color where
+  getRefraction :: World -> Ray3 -> Pt3 -> Vec3 -> Float -> Color -> Color
+  getRefraction _ _ _ _ 1 _ = (Color 0 0 0)
+  getRefraction world (Ray3 (_, dir)) p n i (Color ar ag ab) = color where
     refl = subt dir $ multiply n (2 * dot dir n)
     (c, kr, kg, kb, t) = if dot dir n < 0
                          then (dot n (multiply dir (-1)), 1, 1, 1, refract dir n i)
@@ -290,13 +274,13 @@ module RayTracer (render,flatten) where
     color = case t of 
             Nothing -> 
               let
-                (Color r g b) = getColor world (Ray3 (p, refl)) hit 1
+                (Color r g b) = rayTrace 1 world [(Ray3 (p, refl))]
               in
                 (Color (kr*r) (kg*g) (kb*b))
             Just s -> 
               let
-                (Color r g b) = (getScaledColor (getColor world (Ray3 (p, refl)) hit 1) (Color 1 1 1) f) `mappend`
-                  (getScaledColor (getColor world (Ray3 (p, s)) hit 1) (Color 1 1 1) (1 - f))
+                (Color r g b) = (getScaledColor (rayTrace 1 world [(Ray3 (p, refl))]) (Color 1 1 1) f) `mappend`
+                  (getScaledColor (rayTrace 1 world [(Ray3 (p, s))]) (Color 1 1 1) (1 - f))
               in
                 (Color (kr*r) (kg*g) (kb*b))
 
