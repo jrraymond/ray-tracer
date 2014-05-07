@@ -45,17 +45,23 @@ module RayTracer (render,flatten) where
                  , Color 1.0 1.0 1.0
                  , 100.0
                  , Color 0 0 0
+                 , 1
+                 , Color 0 0 0
                  )
     mat_plane = ( Color 0.6 0.6 0.6
                 , Color 0.6 0.6 0.6
                 , Color 1.0 1.0 1.0
                 , 10.0
                 , Color 0.0 0.0 0.0
+                , 1
+                , Color 0 0 0
                 )
     mat_black_tri = ( Color 0 0 0
                     , Color 0 0 0
                     , Color 0.4 0.4 0.4
                     , 100.0
+                    , Color 1 1 1
+                    , 1
                     , Color 1 1 1
                     )
     mat_red_tri = ( Color 1 0 0
@@ -63,12 +69,16 @@ module RayTracer (render,flatten) where
                   , Color 0.6 0.6 0.6
                   , 100.0
                   , Color 1 1 1
+                  , 1
+                  , Color 1 1 1
                   )
     mat_white_tri = ( Color 1 1 1
                     , Color 1 1 1
                     , Color 0.4 0.4 0.4
                     , 10
                     , Color 0 0 0
+                    , 1
+                    , Color 1 1 1
                     )
     --mat_triangle = ( Color 1 (215/255) 0
     --               , Color 1 (215/255) 0
@@ -193,19 +203,20 @@ module RayTracer (render,flatten) where
   
   getColor :: World -> Ray3 -> HitRec -> Int -> Color
   getColor _ _ _ 0 = Color 0 0 0
-  getColor world ray (HitRec p n _ m@(a, _, _, _, r)) depth = color where
+  getColor world ray hit@(HitRec p n _ m@(a, _, _, _, r, i, rf)) depth = color where
     World { lights = lights' 
           , ambient = ambient'
           , bbTree = bbTree'
           , softshadows = shdwRays
           } = world
+    refr = getRefraction world hit ray p n i rf
     refl = getScaledColor r (getReflection world ray p n depth) 1
     diff_phong = mconcat $ map (getDiffuseAndPhong shdwRays ray m n p bbTree') lights'
     amb = getScaledColor a ambient' 1
-    color = diff_phong `mappend` amb `mappend` refl
+    color = diff_phong `mappend` amb `mappend` refl `mappend` refr
 
   getDiffuseAndPhong :: Int -> Ray3 -> Material -> Vec3 -> Pt3 -> Surfaces -> Light -> Color
-  getDiffuseAndPhong shdwRays (Ray3 (_, dir)) (_, d, s, bp, _) n pt bbtree (lp, l) 
+  getDiffuseAndPhong shdwRays (Ray3 (_, dir)) (_, d, s, bp, _, _, _) n pt bbtree (lp, l) 
     | shdwRays == 0 = color 
     | otherwise = ss_color where
     light_dir = normalize $ subt lp pt
@@ -214,14 +225,14 @@ module RayTracer (render,flatten) where
     color = case light_ray `hits` bbtree of --f light_ray bbtree light_dir dir n bp d l s
             Just _ -> Color 0 0 0
             Nothing -> diffuse where
-              diff_scale = max 0 $ dot light_dir n
+              lamb = getScaledColor d l $ max 0 $ dot light_dir n
 
               {- Blinn Phong contribution -}
               rev_dir = normalize $ multiply dir (-1.0)
               half = normalize $ add rev_dir light_dir
-              phong_scale = max 0 $ dot half n ** bp
+              spec_highlight = getScaledColor s l $ max 0 $ dot half n ** bp
 
-              diffuse = getScaledColor d l diff_scale `mappend` getScaledColor s l phong_scale
+              diffuse = lamb `mappend` spec_highlight
     {- Check to see if near edge of a shadow -}
     {-NOTE calculating pseudo random points as per
     - http://www.altdevblogaday.com/2012/05/03/generating-uniformly-distributed-points-on-sphere/
@@ -255,3 +266,45 @@ module RayTracer (render,flatten) where
   getReflection world (Ray3 (_, dir)) p n depth = color where
     refRay = Ray3 (p, subt dir $ multiply n (2 * dot dir n))
     color = rayTrace (depth - 1) world [refRay]
+  
+  {- TODO: fix the kr, kg, kg constants. Figure out what non-vector t is exactly -}
+  getRefraction :: World -> HitRec -> Ray3 -> Pt3 -> Vec3 -> Float -> Color -> Color
+  getRefraction _ _ _ _ _ 1 _ = (Color 0 0 0)
+  getRefraction world hit (Ray3 (_, dir)) p n i (Color ar ag ab) = color where
+    refl = subt dir $ multiply n (2 * dot dir n)
+    (c, kr, kg, kb, t) = if dot dir n < 0
+                         then (dot n (multiply dir (-1)), 1, 1, 1, refract dir n i)
+                         else 
+                           let
+                             t' = refract dir (multiply n (-1)) (1/i)
+                             kr' = 1/ar -- These should involve an exponential
+                             kg' = 1/ag
+                             kb' = 1/ab
+                             c' = case t' of
+                                  Nothing -> 1
+                                  Just s -> dot s n
+                           in
+                             (c', kr', kg', kb', t')
+    r0 = (i - 1) ** 2 / (i + 1) ** 2
+    f = r0 + (1 - r0) * (1 - c) ** 5
+    color = case t of 
+            Nothing -> 
+              let
+                (Color r g b) = getColor world (Ray3 (p, refl)) hit 1
+              in
+                (Color (kr*r) (kg*g) (kb*b))
+            Just s -> 
+              let
+                (Color r g b) = (getScaledColor (getColor world (Ray3 (p, refl)) hit 1) (Color 1 1 1) f) `mappend`
+                  (getScaledColor (getColor world (Ray3 (p, s)) hit 1) (Color 1 1 1) (1 - f))
+              in
+                (Color (kr*r) (kg*g) (kb*b))
+
+  {- We assume that objects are embedded in air -}
+  {- TODO: Adjust to account for other mediums -}
+  refract :: Vec3 -> Vec3 -> Float -> Maybe Vec3
+  refract d n i = if internal_ref < 0
+                  then Nothing
+                  else Just t where
+                      internal_ref = sqrt $ 1 - (i * i * (1 - (dot d n) ** 2))
+                      t = subt (multiply (subt d (multiply n (dot d n))) i) (multiply n internal_ref)
