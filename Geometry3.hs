@@ -5,7 +5,7 @@ module Geometry3 where
   {- Points are 3-tuples of floats x,y,z -}
   type Pt3 = (Float , Float , Float)
   {- Rays are a tuple of a point and a vector -}
-  newtype Ray3 = Ray3 (Pt3 , Vec3)
+  newtype Ray3 = Ray3 (Pt3 , Vec3) deriving Show
   {- Spheres are tuples of a point and a radius -}
 
   add :: Vec3 -> Vec3 -> Vec3

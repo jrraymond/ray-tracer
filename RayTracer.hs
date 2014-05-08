@@ -5,6 +5,7 @@ module RayTracer (render,flatten) where
   import Geometry3
   import Debug.Trace
   import Data.Semigroup
+  import Data.Maybe (catMaybes)
 
 
   type Width = Int
@@ -34,9 +35,12 @@ module RayTracer (render,flatten) where
     = map (rayTrace reflDepth world . getRays world) pixels where
     reflDepth = 2
     pixels = [ (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
-    eye' = (-4, 4, 7)
-    lookAt' = (8,4,1)
-    up = (0,0,1)
+   -- eye' = (-4, 4, 7)
+   -- lookAt' = (8,4,1)
+   -- up = (0,0,1)
+    eye' = (25, 2, 25)
+    lookAt' = (-1,-1,-1)
+    up = (0,1,0)
     w = normalize $ subt eye' lookAt'
     u = normalize $ cross up w
     v = cross w u
@@ -88,44 +92,73 @@ module RayTracer (render,flatten) where
                 , 2.3
                 , Color 0 1 0
                 )
-    sfcs = Sphere (6, 6, 1.76) 0.75 mat_sphere:
-           Sphere (5, 2, 1.76) 0.75 mat_sphere: 
-
-           Sphere (3, 3, 3) 2 mat_glass:
-
-           Triangle (0, 0, -1) (0, 0, 1) (0, 8, 1) mat_white_tri:
-           Triangle (0, 8, 1) (0, 8, -1) (0, 0, -1) mat_white_tri:
-           Triangle (8, 8, 1) (8, 0, 1) (8, 0, -1) mat_white_tri:
-           Triangle (8, 0, -1) (8, 8, -1) (8, 8, 1) mat_white_tri:
-
-           Triangle (0, 0, -1) (0, 0, 1) (8, 0, 1) mat_white_tri:
-           Triangle (8, 0, 1) (8, 0, -1) (0, 0, -1) mat_white_tri:
-           Triangle (8, 8, 1) (0, 8, 1) (0, 8, -1) mat_white_tri:
-           Triangle (0, 8, -1) (8, 8, -1) (8, 8, 1) mat_white_tri:
-
-           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [0,2..6], y <- [0,2..6] ]
-           ++ 
-           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [0,2..6], y <- [0,2..6] ]
-           ++
-           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [1,3..7], y <- [1,3..7] ]
-           ++
-           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [1,3..7], y <- [1,3..7] ]
-           ++
-           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [1,3..7], y <- [0,2..6] ]
-           ++
-           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [1,3..7], y <- [0,2..6] ]
-           ++
-           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [0,2..6], y <- [1,3..7] ]
-           ++
-           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [0,2..6], y <- [1,3..7] ] 
-           
-    planes' = [ Plane (0, 0, -1.0) (1, 0, -1) (1, 1, -1) mat_plane ]
-    amb = Color 0.1 0.1 0.1
-    lts = [ ((50, 1, 100), Color 1 1 1)
-          , ((4, 12, 20), Color 0.2 0.2 0.2)
+    mat_triangle = ( Color 1 (215/255) 0
+                   , Color 1 (215/255) 0
+                   , Color 0 0 0
+                   , 10
+                   , Color 0 0 0
+                   , 1
+                   , Color 1 1 1
+                   )
+    --mat_triangle = ( Color (0.6, 0.6, 0.6)
+    --               , Color (0.6, 0.6, 0.6)
+    --               , Color (0.0, 0.0, 0.0)
+    --               , 0.0
+    --               , Color (0.6, 0.6, 0.6)
+    --               )
+    sfcs = [ Sphere (3, 1, 5) 2 mat_sphere
+           --, Sphere (4, 10, 2) 1 mat_sphere
+           --, Sphere (4, 0, 12) 1 mat_sphere
+           --, Sphere (14, 0, 2) 1 mat_sphere
+         ----  , Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) mat_plane
+           , Triangle (-10, -1, -10) (10, -1, -10) (-10, 5, -10) mat_triangle
+           , Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) mat_triangle
+           , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) mat_triangle
+           , Triangle (-10, -1, -10) (-10, 5, 10) (-10, -1, 10) mat_triangle
+           ]
+    planes' = [ Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) mat_plane 
+             ]
+    lts = [ ((50, 20, 0), Color 0.5 0.5 0.5)
+          , ((3, 2, 20), Color 0.2 0.2 0.2)
           ]
+   -- sfcs = Sphere (6, 6, 1.76) 0.75 mat_sphere:
+   --        Sphere (5, 2, 1.76) 0.75 mat_sphere: 
+
+   --        Sphere (3, 3, 3) 2 mat_glass:
+
+   --        Triangle (0, 0, -1) (0, 0, 1) (0, 8, 1) mat_white_tri:
+   --        Triangle (0, 8, 1) (0, 8, -1) (0, 0, -1) mat_white_tri:
+   --        Triangle (8, 8, 1) (8, 0, 1) (8, 0, -1) mat_white_tri:
+   --        Triangle (8, 0, -1) (8, 8, -1) (8, 8, 1) mat_white_tri:
+
+   --        Triangle (0, 0, -1) (0, 0, 1) (8, 0, 1) mat_white_tri:
+   --        Triangle (8, 0, 1) (8, 0, -1) (0, 0, -1) mat_white_tri:
+   --        Triangle (8, 8, 1) (0, 8, 1) (0, 8, -1) mat_white_tri:
+   --        Triangle (0, 8, -1) (8, 8, -1) (8, 8, 1) mat_white_tri:
+
+   --        [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [0,2..6], y <- [0,2..6] ]
+   --        ++ 
+   --        [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [0,2..6], y <- [0,2..6] ]
+   --        ++
+   --        [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [1,3..7], y <- [1,3..7] ]
+   --        ++
+   --        [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [1,3..7], y <- [1,3..7] ]
+   --        ++
+   --        [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [1,3..7], y <- [0,2..6] ]
+   --        ++
+   --        [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [1,3..7], y <- [0,2..6] ]
+   --        ++
+   --        [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [0,2..6], y <- [1,3..7] ]
+   --        ++
+   --        [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [0,2..6], y <- [1,3..7] ] 
+   --        
+   -- planes' = [ Plane (0, 0, -1.0) (1, 0, -1) (1, 1, -1) mat_plane ]
+   -- lts = [ ((50, 1, 100), Color 1 1 1)
+   --       , ((4, 12, 20), Color 0.2 0.2 0.2)
+   --       ]
     --sfcs = [Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) (1, 215/255, 0)]
     --sfcs = [Sphere (0, 0, 0) 1 (0.5, 0.2, 0.5)]
+    amb = Color 0.1 0.1 0.1
     world = World { imgDim = (800,600)
                   , viewPlane = (8,6,4)
                   , camera = (u,v,w)
@@ -136,8 +169,8 @@ module RayTracer (render,flatten) where
                   , bbTree = makeBbt sfcs AxisX
                   , lights = lts
                   , ambient = amb
-                  , antialiasing = 1 --1 for none, 3 is good
-                  , softshadows = 0 --1 for none
+                  , antialiasing = 3 --1 for none, 3 is good
+                  , softshadows = 0 --0 for none
                   }
 
   flatten :: [Color] -> [Float]
@@ -198,37 +231,34 @@ module RayTracer (render,flatten) where
     diff_phong = mconcat $ map (getDiffuseAndPhong shdwRays ray m n p bbTree') lights'
     amb = getScaledColor a ambient' 1
     color = diff_phong `mappend` amb `mappend` refl `mappend` refr
-
+  
   getDiffuseAndPhong :: Int -> Ray3 -> Material -> Vec3 -> Pt3 -> Surfaces -> Light -> Color
   getDiffuseAndPhong shdwRays (Ray3 (_, dir)) (_, d, s, bp, _, _, _) n pt bbtree (lp, l) 
-    | shdwRays == 0 = color 
+    | shdwRays == 0 = f (light_ray `hits` bbtree)
     | otherwise = ss_color where
+    light_pts = map (add lp) $ getHammerslayPoints 1
+    light_dirs = map (normalize . flip subt pt) light_pts
+    light_rays = map Ray3 $ zip light_pts light_dirs
+    light_hits =  map (`hits` bbtree) light_rays
+    num_hits = length $ catMaybes light_hits
+    ss_color = if (num_hits < 2 || num_hits > 5) 
+                 then averageColors $ map f light_hits
+                 else averageColors $ map f light_hits 
     light_dir = normalize $ subt lp pt
     light_ray = Ray3 (pt, light_dir)
-    {- Check for shadows -}
-    color = case light_ray `hits` bbtree of --f light_ray bbtree light_dir dir n bp d l s
-            Just _ -> Color 0 0 0
-            Nothing -> diffuse where
-              lamb = getScaledColor d l $ max 0 $ dot light_dir n
-
-              {- Blinn Phong contribution -}
-              rev_dir = normalize $ multiply dir (-1.0)
-              half = normalize $ add rev_dir light_dir
-              spec_highlight = getScaledColor s l $ max 0 $ dot half n ** bp
-
-              diffuse = lamb `mappend` spec_highlight
+    f hitrec = case hitrec of
+              Just _ -> Color 0 0 0 
+              Nothing -> diffuse where
+                lamb = getScaledColor d l $ max 0 $ dot light_dir n
+                {- Blinn Phong contribution -}
+                rev_dir = normalize $ multiply dir (-1.0)
+                half = normalize $ add rev_dir light_dir
+                spec_highlight = getScaledColor s l $ max 0 $ dot half n ** bp
+                diffuse = lamb `mappend` spec_highlight
     {- Check to see if near edge of a shadow -}
     {-NOTE calculating pseudo random points as per
     - http://www.altdevblogaday.com/2012/05/03/generating-uniformly-distributed-points-on-sphere/
-    - http://www.cse.cuhk.edu.hk/~ttwong/papers/udpoint/udpoint.pdf
-    -
-    pts = [ (x,y,z) | let zs = map (/4) [-4..4] :: [Float]
-                          rs = map (\a -> sqrt (1 - a*a)) zs,
-                      z <- zs,
-                      t <- map (/(2*pi)) [0..(2*pi)],
-                      x <- map (\a -> a * cos t) rs,
-                      y <- map (\a -> a * sin t) rs ] -}
-    ss_color = error "ss undefined" --mconcat (map (pt
+    - http://www.cse.cuhk.edu.hk/~ttwong/papers/udpoint/udpoint.pdf -}
     {-f ray bbtree light_dir dir n bp d l s = 
       case ray `hits` bbtree of 
             Just _ -> Color 0 0 0
@@ -292,3 +322,26 @@ module RayTracer (render,flatten) where
                   else Just t where
                       internal_ref = sqrt $ 1 - (i * i * (1 - (dot d n) ** 2))
                       t = subt (multiply (subt d (multiply n (dot d n))) i) (multiply n internal_ref)
+
+
+
+
+  getHammerslayPoints :: Int -> [(Float,Float,Float)]
+  getHammerslayPoints n = ps where
+    ks = [ k | k <- [0..n-1] ]
+    dos :: (Integral a) => a -> a
+    dos = ceiling . (logBase 2 :: Float -> Float) . fromIntegral . (1+)
+    ps = map (g . f) ks
+    g :: (Int,Float) -> (Float,Float,Float)
+    g (k,t) = (st * cos phirad,st * sin phirad,z) where
+      z = 2 * t - 1
+      phi = ((fromIntegral k) + 0.5) / fromIntegral n
+      phirad = phi * 2 * pi
+      st = sqrt (1 - z**2)
+    f :: Int -> (Int,Float)
+    f k = let (_,_,t') = (iterate h (k,0.5,0)) !! (dos k) in (k,t')
+    h :: (Int,Float,Float) -> (Int,Float,Float)
+    h (k,p,t)  
+      | odd k =  (k `div` 2,p * 0.5 ,t + p)
+      | otherwise = (k `div` 2,p * 0.5,t)
+
