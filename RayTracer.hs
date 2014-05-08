@@ -29,10 +29,7 @@ module RayTracer (render,flatten) where
   mapT f (a,b) = (f a,f b)
 
   render :: Width -> Height -> [Color]
-  render wd ht 
-     | trace (show $ makeBbt sfcs AxisX) False = error "fuck"
-     | otherwise 
-    = map (rayTrace reflDepth world . getRays world) pixels where
+  render wd ht = map (rayTrace reflDepth world . getRays world) pixels where
     reflDepth = 2
     pixels = [ (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
    -- eye' = (-4, 4, 7)
@@ -170,7 +167,7 @@ module RayTracer (render,flatten) where
                   , lights = lts
                   , ambient = amb
                   , antialiasing = 3 --1 for none, 3 is good
-                  , softshadows = 0 --0 for none
+                  , softshadows = 1 --0 for none
                   }
 
   flatten :: [Color] -> [Float]
@@ -234,44 +231,27 @@ module RayTracer (render,flatten) where
   
   getDiffuseAndPhong :: Int -> Ray3 -> Material -> Vec3 -> Pt3 -> Surfaces -> Light -> Color
   getDiffuseAndPhong shdwRays (Ray3 (_, dir)) (_, d, s, bp, _, _, _) n pt bbtree (lp, l) 
-    | shdwRays == 0 = f (light_ray `hits` bbtree)
+    | shdwRays == 0 = f (light_ray,light_dir)
     | otherwise = ss_color where
     light_pts = map (add lp) $ getHammerslayPoints 1
     light_dirs = map (normalize . flip subt pt) light_pts
     light_rays = map Ray3 $ zip light_pts light_dirs
-    light_hits =  map (`hits` bbtree) light_rays
-    num_hits = length $ catMaybes light_hits
-    ss_color = if (num_hits < 2 || num_hits > 5) 
-                 then averageColors $ map f light_hits
-                 else averageColors $ map f light_hits 
-    light_dir = normalize $ subt lp pt
-    light_ray = Ray3 (pt, light_dir)
-    f hitrec = case hitrec of
+    ss_color =  averageColors $ map f $ zip light_rays light_dirs
+    f (lr,ldir) = case lr `hits` bbtree of
               Just _ -> Color 0 0 0 
               Nothing -> diffuse where
-                lamb = getScaledColor d l $ max 0 $ dot light_dir n
+                lamb = getScaledColor d l $ max 0 $ dot ldir n
                 {- Blinn Phong contribution -}
                 rev_dir = normalize $ multiply dir (-1.0)
-                half = normalize $ add rev_dir light_dir
+                half = normalize $ add rev_dir ldir
                 spec_highlight = getScaledColor s l $ max 0 $ dot half n ** bp
                 diffuse = lamb `mappend` spec_highlight
+    light_dir = normalize $ subt lp pt
+    light_ray = Ray3 (pt, light_dir)
     {- Check to see if near edge of a shadow -}
     {-NOTE calculating pseudo random points as per
     - http://www.altdevblogaday.com/2012/05/03/generating-uniformly-distributed-points-on-sphere/
     - http://www.cse.cuhk.edu.hk/~ttwong/papers/udpoint/udpoint.pdf -}
-    {-f ray bbtree light_dir dir n bp d l s = 
-      case ray `hits` bbtree of 
-            Just _ -> Color 0 0 0
-            Nothing -> diffuse where
-              diff_scale = max 0 $ dot light_dir n
-
-              {- Blinn Phong contribution -}
-              rev_dir = normalize $ multiply dir (-1.0)
-              half = normalize $ add rev_dir light_dir
-              phong_scale = max 0 $ dot half n ** bp
-
-              diffuse = getScaledColor d l diff_scale `mappend` getScaledColor s l phong_scale
--}
   getScaledColor :: Color -> Color -> Float -> Color
   getScaledColor (Color mr mg mb) (Color lr lg lb) s = 
     Color (mr * lr * s) (mg * lg * s) (mb * lb * s)

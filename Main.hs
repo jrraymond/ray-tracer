@@ -37,7 +37,6 @@ display = do
         ht = 600
         pixels = render wd ht 
     writePPM "output.ppm" wd ht $ invertY wd ht pixels
-    print pixels
     arr <- newArray (flatten pixels) :: IO (Ptr Float)
     --arr <- FMU.new (VS.replicate 100 (1 :: Float))
     GL.drawPixels (GL.Size 800 600) (PixelData GL.RGB GL.Float arr)
