@@ -32,12 +32,12 @@ module RayTracer (render,flatten) where
   render wd ht = map (rayTrace reflDepth world . getRays world) pixels where
     reflDepth = 2
     pixels = [ (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
-   -- eye' = (-4, 4, 7)
-   -- lookAt' = (8,4,1)
-   -- up = (0,0,1)
-    eye' = (25, 2, 25)
-    lookAt' = (-1,-1,-1)
-    up = (0,1,0)
+    eye' = (-4, 4, 7)
+    lookAt' = (8,4,1)
+    up = (0,0,1)
+  --  eye' = (25, 2, 25)
+  --  lookAt' = (-1,-1,-1)
+  --  up = (0,1,0)
     w = normalize $ subt eye' lookAt'
     u = normalize $ cross up w
     v = cross w u
@@ -89,70 +89,70 @@ module RayTracer (render,flatten) where
                 , 2.3
                 , Color 0 1 0
                 )
-    mat_triangle = ( Color 1 (215/255) 0
-                   , Color 1 (215/255) 0
-                   , Color 0 0 0
-                   , 10
-                   , Color 0 0 0
-                   , 1
-                   , Color 1 1 1
-                   )
-    --mat_triangle = ( Color (0.6, 0.6, 0.6)
-    --               , Color (0.6, 0.6, 0.6)
-    --               , Color (0.0, 0.0, 0.0)
-    --               , 0.0
-    --               , Color (0.6, 0.6, 0.6)
-    --               )
-    sfcs = [ Sphere (3, 1, 5) 2 mat_sphere
-           --, Sphere (4, 10, 2) 1 mat_sphere
-           --, Sphere (4, 0, 12) 1 mat_sphere
-           --, Sphere (14, 0, 2) 1 mat_sphere
-         ----  , Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) mat_plane
-           , Triangle (-10, -1, -10) (10, -1, -10) (-10, 5, -10) mat_triangle
-           , Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) mat_triangle
-           , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) mat_triangle
-           , Triangle (-10, -1, -10) (-10, 5, 10) (-10, -1, 10) mat_triangle
-           ]
-    planes' = [ Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) mat_plane 
-             ]
-    lts = [ ((50, 20, 0), Color 0.5 0.5 0.5)
-          , ((3, 2, 20), Color 0.2 0.2 0.2)
-          ]
-   -- sfcs = Sphere (6, 6, 1.76) 0.75 mat_sphere:
-   --        Sphere (5, 2, 1.76) 0.75 mat_sphere: 
-
-   --        Sphere (3, 3, 3) 2 mat_glass:
-
-   --        Triangle (0, 0, -1) (0, 0, 1) (0, 8, 1) mat_white_tri:
-   --        Triangle (0, 8, 1) (0, 8, -1) (0, 0, -1) mat_white_tri:
-   --        Triangle (8, 8, 1) (8, 0, 1) (8, 0, -1) mat_white_tri:
-   --        Triangle (8, 0, -1) (8, 8, -1) (8, 8, 1) mat_white_tri:
-
-   --        Triangle (0, 0, -1) (0, 0, 1) (8, 0, 1) mat_white_tri:
-   --        Triangle (8, 0, 1) (8, 0, -1) (0, 0, -1) mat_white_tri:
-   --        Triangle (8, 8, 1) (0, 8, 1) (0, 8, -1) mat_white_tri:
-   --        Triangle (0, 8, -1) (8, 8, -1) (8, 8, 1) mat_white_tri:
-
-   --        [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [0,2..6], y <- [0,2..6] ]
-   --        ++ 
-   --        [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [0,2..6], y <- [0,2..6] ]
-   --        ++
-   --        [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [1,3..7], y <- [1,3..7] ]
-   --        ++
-   --        [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [1,3..7], y <- [1,3..7] ]
-   --        ++
-   --        [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [1,3..7], y <- [0,2..6] ]
-   --        ++
-   --        [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [1,3..7], y <- [0,2..6] ]
-   --        ++
-   --        [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [0,2..6], y <- [1,3..7] ]
-   --        ++
-   --        [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [0,2..6], y <- [1,3..7] ] 
-   --        
-   -- planes' = [ Plane (0, 0, -1.0) (1, 0, -1) (1, 1, -1) mat_plane ]
-   -- lts = [ ((50, 1, 100), Color 1 1 1)
-   --       , ((4, 12, 20), Color 0.2 0.2 0.2)
+   -- mat_triangle = ( Color 1 (215/255) 0
+   --                , Color 1 (215/255) 0
+   --                , Color 0 0 0
+   --                , 10
+   --                , Color 0 0 0
+   --                , 1
+   --                , Color 1 1 1
+   --                )
+   -- --mat_triangle = ( Color (0.6, 0.6, 0.6)
+   -- --               , Color (0.6, 0.6, 0.6)
+   -- --               , Color (0.0, 0.0, 0.0)
+   -- --               , 0.0
+   -- --               , Color (0.6, 0.6, 0.6)
+   -- --               )
+   -- sfcs = [ Sphere (3, 1, 5) 2 mat_sphere
+   --        --, Sphere (4, 10, 2) 1 mat_sphere
+   --        --, Sphere (4, 0, 12) 1 mat_sphere
+   --        --, Sphere (14, 0, 2) 1 mat_sphere
+   --      ----  , Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) mat_plane
+   --        , Triangle (-10, -1, -10) (10, -1, -10) (-10, 5, -10) mat_triangle
+   --        , Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) mat_triangle
+   --        , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) mat_triangle
+   --        , Triangle (-10, -1, -10) (-10, 5, 10) (-10, -1, 10) mat_triangle
+   --        ]
+   -- planes' = [ Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) mat_plane 
+   --          ]
+   -- lts = [ ((50, 20, 0), Color 0.5 0.5 0.5)
+   --       , ((3, 2, 20), Color 0.2 0.2 0.2)
    --       ]
+    sfcs = Sphere (6, 6, 1.76) 0.75 mat_sphere:
+           Sphere (5, 2, 1.76) 0.75 mat_sphere: 
+
+           Sphere (3, 3, 3) 2 mat_glass:
+
+           Triangle (0, 0, -1) (0, 0, 1) (0, 8, 1) mat_white_tri:
+           Triangle (0, 8, 1) (0, 8, -1) (0, 0, -1) mat_white_tri:
+           Triangle (8, 8, 1) (8, 0, 1) (8, 0, -1) mat_white_tri:
+           Triangle (8, 0, -1) (8, 8, -1) (8, 8, 1) mat_white_tri:
+
+           Triangle (0, 0, -1) (0, 0, 1) (8, 0, 1) mat_white_tri:
+           Triangle (8, 0, 1) (8, 0, -1) (0, 0, -1) mat_white_tri:
+           Triangle (8, 8, 1) (0, 8, 1) (0, 8, -1) mat_white_tri:
+           Triangle (0, 8, -1) (8, 8, -1) (8, 8, 1) mat_white_tri:
+
+           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [0,2..6], y <- [0,2..6] ]
+           ++ 
+           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [0,2..6], y <- [0,2..6] ]
+           ++
+           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [1,3..7], y <- [1,3..7] ]
+           ++
+           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [1,3..7], y <- [1,3..7] ]
+           ++
+           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [1,3..7], y <- [0,2..6] ]
+           ++
+           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [1,3..7], y <- [0,2..6] ]
+           ++
+           [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [0,2..6], y <- [1,3..7] ]
+           ++
+           [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [0,2..6], y <- [1,3..7] ] 
+           
+    planes' = [ Plane (0, 0, -1.0) (1, 0, -1) (1, 1, -1) mat_plane ]
+    lts = [ ((50, 1, 100), Color 1 1 1)
+          , ((4, 12, 20), Color 0.2 0.2 0.2)
+          ]
     --sfcs = [Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) (1, 215/255, 0)]
     --sfcs = [Sphere (0, 0, 0) 1 (0.5, 0.2, 0.5)]
     amb = Color 0.1 0.1 0.1
@@ -166,7 +166,7 @@ module RayTracer (render,flatten) where
                   , bbTree = makeBbt sfcs AxisX
                   , lights = lts
                   , ambient = amb
-                  , antialiasing = 3 --1 for none, 3 is good
+                  , antialiasing = 5 --1 for none, 3 is good
                   , softshadows = 1 --0 for none
                   }
 
@@ -230,24 +230,29 @@ module RayTracer (render,flatten) where
     color = diff_phong `mappend` amb `mappend` refl `mappend` refr
   
   getDiffuseAndPhong :: Int -> Ray3 -> Material -> Vec3 -> Pt3 -> Surfaces -> Light -> Color
-  getDiffuseAndPhong shdwRays (Ray3 (_, dir)) (_, d, s, bp, _, _, _) n pt bbtree (lp, l) 
-    | shdwRays == 0 = f (light_ray,light_dir)
+  getDiffuseAndPhong shdwRays (Ray3 (_,rdir)) (_, d, s, bp, _, _, _) n pt bbtree (lp, l) 
+    | shdwRays == 0 = f (Ray3 (pt,light_dir),light_dir)
     | otherwise = ss_color where
-    light_pts = map (add lp) $ getHammerslayPoints 1
-    light_dirs = map (normalize . flip subt pt) light_pts
-    light_rays = map Ray3 $ zip light_pts light_dirs
-    ss_color =  averageColors $ map f $ zip light_rays light_dirs
-    f (lr,ldir) = case lr `hits` bbtree of
+    light_pts = map (add lp) $ getHammerslayPoints 8 -- test with 8
+    ssdirs = map (normalize . flip subt pt) light_pts
+    ssrays = map Ray3 $ zip (repeat pt) ssdirs
+    numhits = length $ catMaybes $ map (`hits` bbtree) ssrays
+    light_pts' = map (add lp) $ getHammerslayPoints 128 -- if on edge need 128 rays
+    ssdirs' = map (normalize . flip subt pt) light_pts'
+    ssrays' = map Ray3 $ zip (repeat pt) ssdirs'
+    ss_color = if numhits > 0 && numhits < 8 
+                 then averageColors $ map f $ zip ssrays' ssdirs' --on edge
+                 else averageColors $ map f $ zip ssrays ssdirs 
+    f (ssray,ssdir) = case ssray `hits` bbtree of
               Just _ -> Color 0 0 0 
               Nothing -> diffuse where
-                lamb = getScaledColor d l $ max 0 $ dot ldir n
+                lamb = getScaledColor d l $ max 0 $ dot ssdir n
                 {- Blinn Phong contribution -}
-                rev_dir = normalize $ multiply dir (-1.0)
-                half = normalize $ add rev_dir ldir
+                rev_dir = normalize $ multiply rdir (-1.0)
+                half = normalize $ add rev_dir ssdir
                 spec_highlight = getScaledColor s l $ max 0 $ dot half n ** bp
                 diffuse = lamb `mappend` spec_highlight
     light_dir = normalize $ subt lp pt
-    light_ray = Ray3 (pt, light_dir)
     {- Check to see if near edge of a shadow -}
     {-NOTE calculating pseudo random points as per
     - http://www.altdevblogaday.com/2012/05/03/generating-uniformly-distributed-points-on-sphere/
