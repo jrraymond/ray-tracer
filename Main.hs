@@ -9,40 +9,49 @@ import qualified Graphics.Rendering.OpenGL as GL
 import Graphics.Rendering.OpenGL.GL.PixelRectangles.Rasterization
 import Surfaces
 import RayTracer
+import Geometry3
 import Data.List (sortBy)
+import System.Environment
+import System.Console.GetOpt
+import Data.Maybe
 
 
 main :: IO ()
 main = do 
-    --for debuggin purposes draw a ppm
     --initialize OpenGL systems
     (_progName, _args) <- GLUT.getArgsAndInitialize
+    let (opts,_) = renderOpts _args
+        iwd = fromMaybe 800 (optImgWd opts)
+        iht = fromMaybe 600 (optImgHt opts)
+        ciwd = fromIntegral iwd
+        ciht = fromIntegral iht
+        world = World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' sfcs planes' (makeBbt sfcs AxisX) lts amb 3 1
+        pixels = render world
+        display :: GLUT.DisplayCallback
+        display = do
+          --clears out the graphics color state
+          GLUT.clear [ GLUT.ColorBuffer ]
+          --(GL.Size x y) <- GLUT.get GLUT.windowSize
+          writePPM "output.ppm" iwd iht $ invertY iwd iht pixels
+          arr <- newArray (flatten pixels) :: IO (Ptr Float)
+          --arr <- FMU.new (VS.replicate 100 (1 :: Float))
+          GL.drawPixels (GL.Size ciwd ciht) (PixelData GL.RGB GL.Float arr)
+          --GL.drawPixels size undefined
+          --pushes our OpenGL commands down to the systems graphics for display
+          GLUT.flush
+    GLUT.initialWindowSize GLUT.$= GL.Size ciwd ciht
     ----open the main window
     _window <- GLUT.createWindow "Ray Tracer"
-    GLUT.windowSize GLUT.$= GL.Size 800 600
     ----set the display callback for the main window
     GLUT.displayCallback GLUT.$= display
     GLUT.reshapeCallback GLUT.$= Just reshape
     ----let GLUT take over
     GLUT.mainLoop
+
+
 reshape :: GLUT.ReshapeCallback
 reshape size = GLUT.viewport GLUT.$= (GLUT.Position 0 0, size)
 
-display :: GLUT.DisplayCallback
-display = do
-    --clears out the graphics color state
-    GLUT.clear [ GLUT.ColorBuffer ]
-    --(GL.Size x y) <- GLUT.get GLUT.windowSize
-    let wd = 800
-        ht = 600
-        pixels = render wd ht 
-    writePPM "output.ppm" wd ht $ invertY wd ht pixels
-    arr <- newArray (flatten pixels) :: IO (Ptr Float)
-    --arr <- FMU.new (VS.replicate 100 (1 :: Float))
-    GL.drawPixels (GL.Size 800 600) (PixelData GL.RGB GL.Float arr)
-    --GL.drawPixels size undefined
-    --pushes our OpenGL commands down to the systems graphics for display
-    GLUT.flush
 writePPM :: String -> Int -> Int -> [Color] -> IO ()
 writePPM name w h pixels = writeFile name string  where 
   toStr :: Float -> String
@@ -68,3 +77,169 @@ invertY wd ht cs = map snd $ sortBy g $ zipWith (curry f) [0..] cs where
 - this to write the ppm -}
 clamp :: Float -> Float
 clamp x | x < 0 = 0 | x > 1 = 1 | otherwise = x
+
+{- Format for command line arguments -}
+usage :: String
+usage = "usage raytracer [-win_wd=] [-win_ht=]"
+
+{- Parses the command line arguments -}
+
+
+
+data Options = Options
+  { optScene :: Maybe String
+  , optImgWd :: Maybe Int
+  , optImgHt :: Maybe Int
+  } deriving Show
+
+defaultOptions :: Options
+defaultOptions = Options
+  { optScene = Nothing
+  , optImgWd = Just 800
+  , optImgHt = Just 600
+  }
+
+options :: [OptDescr (Options -> Options)]
+options = 
+    [ Option ['s'] ["scene"] (ReqArg (\s opts -> opts { optScene = Just s}) "") "scene file"
+    , Option ['w'] ["imageWidth"] (ReqArg (\w opts -> opts { optImgWd = readInt w}) "800") "image width in pixels"
+    , Option ['h'] ["imageHeight"] (ReqArg (\h opts -> opts { optImgHt = readInt h}) "600") "image height in pixels"
+    ]
+
+readInt :: String -> Maybe Int
+readInt = fmap fst . listToMaybe . reads
+renderOpts :: [String] -> (Options, [String])
+renderOpts args =
+    case getOpt Permute options args of
+      (o,n,[]) -> (foldl (flip id) defaultOptions o, n)
+      (_,_,ers) -> (defaultOptions, [concat ers ++ usageInfo header options])
+      where header = "Usage: "
+
+
+
+
+
+
+
+
+
+
+
+
+reflDepth = 2
+--  eye' = (-4, 4, 7)
+--  lookAt' = (8,4,1)
+--  up = (0,0,1)
+eye' = (25, 2, 25)
+lookAt' = (-1,-1,-1)
+up = (0,1,0)
+w = normalize $ subt eye' lookAt'
+u = normalize $ cross up w
+v = cross w u
+mat_sphere = ( Color 0.5 0.2 0.5
+               , Color 0.5 0.2 0.5
+               , Color 1.0 1.0 1.0
+               , 100.0
+               , Color 0 0 0
+               , 1
+               , Color 0 0 0
+               )
+mat_plane = ( Color 0.6 0.6 0.6
+              , Color 0.6 0.6 0.6
+              , Color 1.0 1.0 1.0
+              , 10.0
+              , Color 0.0 0.0 0.0
+              , 1
+              , Color 0 0 0
+            )
+mat_black_tri = ( Color 0 0 0
+                , Color 0 0 0
+                , Color 0.4 0.4 0.4
+                , 100.0
+                , Color 1 1 1
+                , 1
+                , Color 1 1 1
+                )
+mat_red_tri = ( Color 1 0 0
+              , Color 1 0 0
+              , Color 0.6 0.6 0.6
+              , 100.0
+              , Color 1 1 1
+              , 1
+              , Color 1 1 1
+              )
+mat_white_tri = ( Color 1 1 1
+                , Color 1 1 1
+                , Color 0.4 0.4 0.4
+                , 10
+                , Color 0 0 0
+                , 1
+                , Color 1 1 1
+              )
+mat_glass = ( Color 0 0 1
+          , Color 0 0 1
+          , Color 0.6 0.6 0.6
+          , 10
+          , Color 1 1 1
+          , 2.3
+          , Color 0 1 0
+          )
+mat_triangle = ( Color 1 (215/255) 0
+             , Color 1 (215/255) 0
+               , Color 0 0 0
+               , 10
+               , Color 0 0 0
+               , 1
+               , Color 1 1 1
+               )
+sfcs = [ Sphere (3, 1, 5) 2 mat_sphere
+       , Sphere (4, 10, 2) 1 mat_sphere
+       , Sphere (4, 0, 12) 1 mat_sphere
+       , Sphere (14, 0, 2) 1 mat_sphere
+       , Triangle (-10, -1, -10) (10, -1, -10) (-10, 5, -10) mat_triangle
+       , Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) mat_triangle
+       , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) mat_triangle
+       , Triangle (-10, -1, -10) (-10, 5, 10) (-10, -1, 10) mat_triangle
+       ]
+planes' = [ Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) mat_plane 
+           ]
+lts = [ ((50, 20, 0), Color 0.5 0.5 0.5)
+    , ((3, 2, 20), Color 0.2 0.2 0.2)
+    ]
+--sfcs = Sphere (6, 6, 1.76) 0.75 mat_sphere:
+--       Sphere (5, 2, 1.76) 0.75 mat_sphere: 
+
+--       Sphere (3, 3, 3) 2 mat_glass:
+
+--       Triangle (0, 0, -1) (0, 0, 1) (0, 8, 1) mat_white_tri:
+--       Triangle (0, 8, 1) (0, 8, -1) (0, 0, -1) mat_white_tri:
+--       Triangle (8, 8, 1) (8, 0, 1) (8, 0, -1) mat_white_tri:
+--       Triangle (8, 0, -1) (8, 8, -1) (8, 8, 1) mat_white_tri:
+
+--       Triangle (0, 0, -1) (0, 0, 1) (8, 0, 1) mat_white_tri:
+--       Triangle (8, 0, 1) (8, 0, -1) (0, 0, -1) mat_white_tri:
+--       Triangle (8, 8, 1) (0, 8, 1) (0, 8, -1) mat_white_tri:
+--       Triangle (0, 8, -1) (8, 8, -1) (8, 8, 1) mat_white_tri:
+
+--       [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [0,2..6], y <- [0,2..6] ]
+--       ++ 
+--       [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [0,2..6], y <- [0,2..6] ]
+--       ++
+--       [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [1,3..7], y <- [1,3..7] ]
+--       ++
+--       [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [1,3..7], y <- [1,3..7] ]
+--       ++
+--       [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [1,3..7], y <- [0,2..6] ]
+--       ++
+--       [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [1,3..7], y <- [0,2..6] ]
+--       ++
+--       [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [0,2..6], y <- [1,3..7] ]
+--       ++
+--       [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [0,2..6], y <- [1,3..7] ] 
+--       
+--planes' = [ Plane (0, 0, -1.0) (1, 0, -1) (1, 1, -1) mat_plane ]
+--lts = [ ((50, 1, 100), Color 1 1 1)
+--      , ((4, 12, 20), Color 0.2 0.2 0.2)
+--      ]
+amb = Color 0.1 0.1 0.1
+          
