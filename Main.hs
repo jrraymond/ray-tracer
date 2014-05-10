@@ -20,12 +20,15 @@ main :: IO ()
 main = do 
     --initialize OpenGL systems
     (_progName, _args) <- GLUT.getArgsAndInitialize
-    let (opts,_) = renderOpts _args
-        iwd = fromMaybe 800 (optImgWd opts)
-        iht = fromMaybe 600 (optImgHt opts)
+    let (opts,errs) = parseOpts _args
+        iwd = fromMaybe 80 (optImgWd opts)
+        iht = fromMaybe 60 (optImgHt opts)
         ciwd = fromIntegral iwd
         ciht = fromIntegral iht
-        world = World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' sfcs planes' (makeBbt sfcs AxisX) lts amb 3 1
+        as = fromMaybe 0 (optAntiAliasing opts)
+        ss = fromMaybe 1 (optSoftShadows opts)
+        rd = fromMaybe 2 (optReflDepth opts)
+        world = World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' sfcs planes' (makeBbt sfcs AxisX) lts amb as ss rd
         pixels = render world
         display :: GLUT.DisplayCallback
         display = do
@@ -39,6 +42,7 @@ main = do
           --GL.drawPixels size undefined
           --pushes our OpenGL commands down to the systems graphics for display
           GLUT.flush
+    print errs
     GLUT.initialWindowSize GLUT.$= GL.Size ciwd ciht
     ----open the main window
     _window <- GLUT.createWindow "Ray Tracer"
@@ -90,6 +94,9 @@ data Options = Options
   { optScene :: Maybe String
   , optImgWd :: Maybe Int
   , optImgHt :: Maybe Int
+  , optAntiAliasing :: Maybe Int
+  , optSoftShadows :: Maybe Int
+  , optReflDepth :: Maybe Int
   } deriving Show
 
 defaultOptions :: Options
@@ -97,6 +104,9 @@ defaultOptions = Options
   { optScene = Nothing
   , optImgWd = Just 800
   , optImgHt = Just 600
+  , optAntiAliasing = Just 1
+  , optSoftShadows = Just 0
+  , optReflDepth = Just 2
   }
 
 options :: [OptDescr (Options -> Options)]
@@ -104,16 +114,20 @@ options =
     [ Option ['s'] ["scene"] (ReqArg (\s opts -> opts { optScene = Just s}) "") "scene file"
     , Option ['w'] ["imageWidth"] (ReqArg (\w opts -> opts { optImgWd = readInt w}) "800") "image width in pixels"
     , Option ['h'] ["imageHeight"] (ReqArg (\h opts -> opts { optImgHt = readInt h}) "600") "image height in pixels"
+    , Option [] ["antialiasing"] (ReqArg (\a opts -> opts { optAntiAliasing = readInt a}) "1") "antialiasing level"
+    , Option [] ["softshadows"] (ReqArg (\s opts -> opts { optSoftShadows = readInt s }) "0") "shoftshadow level"
+    , Option [] ["reflectiondepth"] (ReqArg (\d opts -> opts { optReflDepth = readInt d}) "2") "reflection depth"
     ]
 
 readInt :: String -> Maybe Int
 readInt = fmap fst . listToMaybe . reads
-renderOpts :: [String] -> (Options, [String])
-renderOpts args =
+
+parseOpts :: [String] -> (Options, [String])
+parseOpts args =
     case getOpt Permute options args of
       (o,n,[]) -> (foldl (flip id) defaultOptions o, n)
       (_,_,ers) -> (defaultOptions, [concat ers ++ usageInfo header options])
-      where header = "Usage: "
+      where header = "Usage: ./raytracer -s[--scene] <scene-file> [-w,-h,--antialiasing,--softshadows]"
 
 
 
@@ -126,7 +140,6 @@ renderOpts args =
 
 
 
-reflDepth = 2
 --  eye' = (-4, 4, 7)
 --  lookAt' = (8,4,1)
 --  up = (0,0,1)

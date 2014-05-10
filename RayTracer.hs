@@ -25,14 +25,15 @@ module RayTracer (render
                      , ambient :: Color
                      , antialiasing :: Int
                      , softshadows :: Int
+                     , reflDepth :: Int
                      }
 
   mapT :: (a -> b) -> (a,a) -> (b,b)
   mapT f (a,b) = (f a,f b)
 
   render :: World -> [Color]
-  render world = map (rayTrace reflDepth world . getRays world) pixels where
-    reflDepth = 2
+  render world = map (rayTrace refldepth world . getRays world) pixels where
+    refldepth = reflDepth world
     pixels = [ (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
     (wd,ht) = imgDim world
 
