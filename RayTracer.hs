@@ -8,7 +8,7 @@ module RayTracer (render
   --import Debug.Trace
   import Data.Semigroup
   import Data.Maybe (catMaybes)
-
+  import Control.Parallel.Strategies hiding (dot)
 
   type Width = Int
   type Height = Int
@@ -32,10 +32,12 @@ module RayTracer (render
   mapT f (a,b) = (f a,f b)
 
   render :: World -> [Color]
-  render world = map (rayTrace refldepth world . getRays world) pixels where
+  render world = ps' where
     refldepth = reflDepth world
-    pixels = [ (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
+    f = rayTrace refldepth world . getRays world
+    pixels = [ f (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
     (wd,ht) = imgDim world
+    ps' = runEval $ parBuffer 100 rseq pixels
 
   flatten :: [Color] -> [Float]
   flatten [] = []

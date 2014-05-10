@@ -35,14 +35,13 @@ main = do
           --clears out the graphics color state
           GLUT.clear [ GLUT.ColorBuffer ]
           --(GL.Size x y) <- GLUT.get GLUT.windowSize
-          writePPM "output.ppm" iwd iht $ invertY iwd iht pixels
           arr <- newArray (flatten pixels) :: IO (Ptr Float)
           --arr <- FMU.new (VS.replicate 100 (1 :: Float))
           GL.drawPixels (GL.Size ciwd ciht) (PixelData GL.RGB GL.Float arr)
           --GL.drawPixels size undefined
           --pushes our OpenGL commands down to the systems graphics for display
           GLUT.flush
-    print errs
+    writePPM "output.ppm" iwd iht $ invertY iwd iht pixels
     GLUT.initialWindowSize GLUT.$= GL.Size ciwd ciht
     ----open the main window
     _window <- GLUT.createWindow "Ray Tracer"
@@ -50,7 +49,7 @@ main = do
     GLUT.displayCallback GLUT.$= display
     GLUT.reshapeCallback GLUT.$= Just reshape
     ----let GLUT take over
-    GLUT.mainLoop
+    --GLUT.mainLoop
 
 
 reshape :: GLUT.ReshapeCallback
