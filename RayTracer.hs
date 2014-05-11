@@ -35,9 +35,9 @@ module RayTracer (render
   render world = ps' where
     refldepth = reflDepth world
     f = rayTrace refldepth world . getRays world
-    pixels = [ f (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
+    pixels = [ (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
     (wd,ht) = imgDim world
-    ps' = runEval $ parBuffer 100 rseq pixels
+    ps' = map (rayTrace refldepth world . getRays world) pixels `using` parListChunk 25 rseq
 
   flatten :: [Color] -> [Float]
   flatten [] = []
