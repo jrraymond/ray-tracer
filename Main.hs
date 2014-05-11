@@ -10,16 +10,40 @@ import Graphics.Rendering.OpenGL.GL.PixelRectangles.Rasterization
 import Surfaces
 import RayTracer
 import Geometry3
-import Data.List (sortBy)
-import System.Environment
+import Data.List (sortBy, partition)
+import System.Exit
 import System.Console.GetOpt
 import Data.Maybe
+import Parser
 
 
 main :: IO ()
 main = do 
     --initialize OpenGL systems
     (_progName, _args) <- GLUT.getArgsAndInitialize
+    --Ask for scene description files
+    putStrLn "Enter color file: "
+    colorFile <- getLine
+    cs <- readFile colorFile
+    colorMap <- case readColors cs of
+                  Left err -> putStr (show err) >> exitWith (ExitFailure 1)
+                  Right m -> return m
+    print colorMap
+    putStrLn "Enter material file: "
+    materialFile <- getLine
+    ms <- readFile materialFile
+    matMap <- case readMaterials ms colorMap of
+                Left err -> putStr (show err) >> exitWith (ExitFailure 1)
+                Right m -> return m
+    print matMap
+    putStrLn "Enter shape file: "
+    shapeFile <- getLine
+    ss <- readFile shapeFile
+    shapes <- case readShapes ss matMap of
+                Left err -> putStr (show err) >> exitWith (ExitFailure 1)
+                Right m -> return m
+    print shapes
+
     let (opts,errs) = parseOpts _args
         iwd = fromMaybe 80 (optImgWd opts)
         iht = fromMaybe 60 (optImgHt opts)
@@ -28,7 +52,8 @@ main = do
         as = fromMaybe 0 (optAntiAliasing opts)
         ss = fromMaybe 1 (optSoftShadows opts)
         rd = fromMaybe 2 (optReflDepth opts)
-        world = World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' sfcs planes' (makeBbt sfcs AxisX) lts amb as ss rd
+        (planes',shapes') = partition isPlane $ map snd shapes
+        world = World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd
         pixels = render world
         display :: GLUT.DisplayCallback
         display = do
@@ -139,15 +164,16 @@ parseOpts args =
 
 
 
---  eye' = (-4, 4, 7)
---  lookAt' = (8,4,1)
---  up = (0,0,1)
+--eye' = (-4, 4, 7)
+--lookAt' = (8,4,1)
+--up = (0,0,1)
 eye' = (25, 2, 25)
 lookAt' = (-1,-1,-1)
 up = (0,1,0)
 w = normalize $ subt eye' lookAt'
 u = normalize $ cross up w
 v = cross w u
+{-
 mat_sphere = ( Color 0.5 0.2 0.5
                , Color 0.5 0.2 0.5
                , Color 1.0 1.0 1.0
@@ -215,9 +241,11 @@ sfcs = [ Sphere (3, 1, 5) 2 mat_sphere
        ]
 planes' = [ Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) mat_plane 
            ]
+           -}
 lts = [ ((50, 20, 0), Color 0.5 0.5 0.5)
     , ((3, 2, 20), Color 0.2 0.2 0.2)
     ]
+    {-
 --sfcs = Sphere (6, 6, 1.76) 0.75 mat_sphere:
 --       Sphere (5, 2, 1.76) 0.75 mat_sphere: 
 
@@ -253,5 +281,6 @@ lts = [ ((50, 20, 0), Color 0.5 0.5 0.5)
 --lts = [ ((50, 1, 100), Color 1 1 1)
 --      , ((4, 12, 20), Color 0.2 0.2 0.2)
 --      ]
+-}
 amb = Color 0.1 0.1 0.1
           

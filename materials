@@ -1,0 +1,7 @@
+Material mat_plane    = grey grey black 10.0 black 1.0 black
+Material mat_sphere   = blue blue white 100.0  black  1.0  black
+Material btriangle = black  black  grey2  100.0  white  1.0  white
+Material rtriangle = red  red  grey  100.0  white  1.0  white
+Material mat_white_tri = white  white  grey2 10.0 black 1.0  black
+Material mat_yellow_tri = yellow yellow yellow 10.0 black 1.0 black
+Material mat_glass    = blue blue  grey   10.0 white  2.3  green

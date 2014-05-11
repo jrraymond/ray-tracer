@@ -203,3 +203,7 @@ module Surfaces
     (t_z0,t_z1) = if dz >= 0 then ((n - bz) / dz , (f - bz) / dz)
                              else ((f - bz) / dz , (n - bz) / dz)
     material = error "material undefined"
+
+  isPlane :: Shape -> Bool
+  isPlane Plane{} = True
+  isPlane _ = False
