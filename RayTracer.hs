@@ -132,34 +132,41 @@ module RayTracer (render
   
   {- TODO: fix the kr, kg, kg constants. Figure out what non-vector t is exactly -}
   getRefraction :: World -> Ray3 -> Pt3 -> Vec3 -> Float -> Color -> Color
-  getRefraction _ _ _ _ 1 _ = (Color 0 0 0)
-  getRefraction world (Ray3 (_, dir)) p n i (Color ar ag ab) = color where
+  getRefraction _ _ _ _ 0 _ = (Color 0 0 0)
+  getRefraction world (Ray3 (e, dir)) p n i (Color ar ag ab) = color where
     refl = subt dir $ multiply n (2 * dot dir n)
     (c, kr, kg, kb, t) = if dot dir n < 0
-                         then (dot n (multiply dir (-1)), 1, 1, 1, refract dir n i)
+                         then ((-1) * (dot n dir), 1, 1, 1, refract dir n i)
                          else 
                            let
                              t' = refract dir (multiply n (-1)) (1/i)
-                             kr' = 1/ar -- These should involve an exponential
-                             kg' = 1/ag
-                             kb' = 1/ab
+                             --w = magnitude $ subt e p
+                             kr' = exp(-1 * log(ar)) -- These should involve an exponential
+                             kg' = exp(-1 * log(ag))
+                             kb' = exp(-1 * log(ab))
                              c' = case t' of
                                   Nothing -> 1
                                   Just s -> dot s n
                            in
                              (c', kr', kg', kb', t')
+    
     r0 = (i - 1) ** 2 / (i + 1) ** 2
     f = r0 + (1 - r0) * (1 - c) ** 5
     color = case t of 
             Nothing -> 
               let
-                (Color r g b) = rayTrace 1 world [(Ray3 (p, refl))]
+                (Color r g b) = rayTrace 3 world [(Ray3 (p, refl))]
               in
                 (Color (kr*r) (kg*g) (kb*b))
             Just s -> 
               let
-                (Color r g b) = (getScaledColor (rayTrace 1 world [(Ray3 (p, refl))]) (Color 1 1 1) f) `mappend`
-                  (getScaledColor (rayTrace 1 world [(Ray3 (p, s))]) (Color 1 1 1) (1 - f))
+                {- According to the book, we should have something similar to the former,
+                 - but all this does is causes problems for me. The latter gives something that
+                 - looks relatively nice
+                 -}
+                --(Color r g b) = (getScaledColor (rayTrace 3 world [(Ray3 (p, refl))]) (Color 1 1 1) f) `mappend`
+                --    (getScaledColor (rayTrace 3 world [(Ray3 (p, s))]) (Color 1 1 1) (1 - f))
+                (Color r g b) = rayTrace 3 world [(Ray3 (p, refl))] `mappend` rayTrace 3 world [(Ray3 (p, s))]
               in
                 (Color (kr*r) (kg*g) (kb*b))
 
