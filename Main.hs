@@ -15,34 +15,14 @@ import System.Exit
 import System.Console.GetOpt
 import Data.Maybe
 import Parser
+import Data.Map (Map)
+import qualified Data.Map as Map
 
 
 main :: IO ()
 main = do 
     --initialize OpenGL systems
     (_progName, _args) <- GLUT.getArgsAndInitialize
-    --Ask for scene description files
-    putStrLn "Enter color file: "
-    colorFile <- getLine
-    cs <- readFile colorFile
-    colorMap <- case readColors cs of
-                  Left err -> putStr (show err) >> exitWith (ExitFailure 1)
-                  Right m -> return m
-    print colorMap
-    putStrLn "Enter material file: "
-    materialFile <- getLine
-    ms <- readFile materialFile
-    matMap <- case readMaterials ms colorMap of
-                Left err -> putStr (show err) >> exitWith (ExitFailure 1)
-                Right m -> return m
-    print matMap
-    putStrLn "Enter shape file: "
-    shapeFile <- getLine
-    ss <- readFile shapeFile
-    shapes <- case readShapes ss matMap of
-                Left err -> putStr (show err) >> exitWith (ExitFailure 1)
-                Right m -> return m
-    print shapes
 
     let (opts,errs) = parseOpts _args
         iwd = fromMaybe 80 (optImgWd opts)
@@ -52,7 +32,18 @@ main = do
         as = fromMaybe 0 (optAntiAliasing opts)
         ss = fromMaybe 1 (optSoftShadows opts)
         rd = fromMaybe 2 (optReflDepth opts)
-        (planes',shapes') = partition isPlane $ map snd shapes
+
+    colorFin <- checkFile $ optColorF opts
+    colorMap <- checkSource $ readColors Map.empty colorFin 
+    print colorMap
+    matFin <- checkFile $ optMaterialF opts
+    matMap <-  checkSource $ readMaterials colorMap matFin
+    print matMap
+    shapeFin <- checkFile $ optShapeF opts
+    shapeMap <- checkSource $ readShapes matMap shapeFin
+    print shapeMap
+
+    let (planes',shapes') = partition isPlane $ map snd (Map.toList shapeMap)
         world = World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd
         pixels = render world
         display :: GLUT.DisplayCallback
@@ -67,12 +58,12 @@ main = do
           --pushes our OpenGL commands down to the systems graphics for display
           GLUT.flush
     writePPM "output.ppm" iwd iht $ invertY iwd iht pixels
-    GLUT.initialWindowSize GLUT.$= GL.Size ciwd ciht
+    --GLUT.initialWindowSize GLUT.$= GL.Size ciwd ciht
     ----open the main window
-    _window <- GLUT.createWindow "Ray Tracer"
+    --_window <- GLUT.createWindow "Ray Tracer"
     ----set the display callback for the main window
-    GLUT.displayCallback GLUT.$= display
-    GLUT.reshapeCallback GLUT.$= Just reshape
+    --GLUT.displayCallback GLUT.$= display
+    --GLUT.reshapeCallback GLUT.$= Just reshape
     ----let GLUT take over
     --GLUT.mainLoop
 
@@ -115,7 +106,9 @@ usage = "usage raytracer [-win_wd=] [-win_ht=]"
 
 
 data Options = Options
-  { optScene :: Maybe String
+  { optColorF :: Either String String
+  , optMaterialF :: Either String String
+  , optShapeF :: Either String String
   , optImgWd :: Maybe Int
   , optImgHt :: Maybe Int
   , optAntiAliasing :: Maybe Int
@@ -125,7 +118,9 @@ data Options = Options
 
 defaultOptions :: Options
 defaultOptions = Options
-  { optScene = Nothing
+  { optColorF = Left "No color file"
+  , optMaterialF = Left "No material file"
+  , optShapeF = Left "No shape file"
   , optImgWd = Just 800
   , optImgHt = Just 600
   , optAntiAliasing = Just 1
@@ -135,7 +130,9 @@ defaultOptions = Options
 
 options :: [OptDescr (Options -> Options)]
 options = 
-    [ Option ['s'] ["scene"] (ReqArg (\s opts -> opts { optScene = Just s}) "") "scene file"
+    [ Option ['c'] ["colors"] (ReqArg (\x opts -> opts {optColorF = Right x}) "") "Color file"
+    , Option ['m'] ["materials"] (ReqArg (\x opts -> opts { optMaterialF = Right x}) "") "Material file"
+    , Option ['s'] ["shapes"] (ReqArg (\x opts -> opts { optShapeF = Right x}) "") "Shape file"
     , Option ['w'] ["imageWidth"] (ReqArg (\w opts -> opts { optImgWd = readInt w}) "800") "image width in pixels"
     , Option ['h'] ["imageHeight"] (ReqArg (\h opts -> opts { optImgHt = readInt h}) "600") "image height in pixels"
     , Option [] ["antialiasing"] (ReqArg (\a opts -> opts { optAntiAliasing = readInt a}) "1") "antialiasing level"
@@ -153,9 +150,13 @@ parseOpts args =
       (_,_,ers) -> (defaultOptions, [concat ers ++ usageInfo header options])
       where header = "Usage: ./raytracer -s[--scene] <scene-file> [-w,-h,--antialiasing,--softshadows]"
 
+checkFile :: Either String String -> IO String
+checkFile (Left e) = putStrLn e >> exitWith (ExitFailure 1)
+checkFile (Right f) = readFile f
 
-
-
+checkSource s = do case s of
+                      Left err -> putStrLn (show err) >> exitWith (ExitFailure 1)
+                      Right m -> return m
 
 
 
@@ -173,114 +174,8 @@ up = (0,1,0)
 w = normalize $ subt eye' lookAt'
 u = normalize $ cross up w
 v = cross w u
-{-
-mat_sphere = ( Color 0.5 0.2 0.5
-               , Color 0.5 0.2 0.5
-               , Color 1.0 1.0 1.0
-               , 100.0
-               , Color 0 0 0
-               , 1
-               , Color 0 0 0
-               )
-mat_plane = ( Color 0.6 0.6 0.6
-              , Color 0.6 0.6 0.6
-              , Color 1.0 1.0 1.0
-              , 10.0
-              , Color 0.0 0.0 0.0
-              , 1
-              , Color 0 0 0
-            )
-mat_black_tri = ( Color 0 0 0
-                , Color 0 0 0
-                , Color 0.4 0.4 0.4
-                , 100.0
-                , Color 1 1 1
-                , 1
-                , Color 1 1 1
-                )
-mat_red_tri = ( Color 1 0 0
-              , Color 1 0 0
-              , Color 0.6 0.6 0.6
-              , 100.0
-              , Color 1 1 1
-              , 1
-              , Color 1 1 1
-              )
-mat_white_tri = ( Color 1 1 1
-                , Color 1 1 1
-                , Color 0.4 0.4 0.4
-                , 10
-                , Color 0 0 0
-                , 1
-                , Color 1 1 1
-              )
-mat_glass = ( Color 0 0 1
-          , Color 0 0 1
-          , Color 0.6 0.6 0.6
-          , 10
-          , Color 1 1 1
-          , 2.3
-          , Color 0 1 0
-          )
-mat_triangle = ( Color 1 (215/255) 0
-             , Color 1 (215/255) 0
-               , Color 0 0 0
-               , 10
-               , Color 0 0 0
-               , 1
-               , Color 1 1 1
-               )
-sfcs = [ Sphere (3, 1, 5) 2 mat_sphere
-       , Sphere (4, 10, 2) 1 mat_sphere
-       , Sphere (4, 0, 12) 1 mat_sphere
-       , Sphere (14, 0, 2) 1 mat_sphere
-       , Triangle (-10, -1, -10) (10, -1, -10) (-10, 5, -10) mat_triangle
-       , Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) mat_triangle
-       , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) mat_triangle
-       , Triangle (-10, -1, -10) (-10, 5, 10) (-10, -1, 10) mat_triangle
-       ]
-planes' = [ Plane (-40, -1, 2) (2, -1, 2) (2, -1, -20) mat_plane 
-           ]
-           -}
 lts = [ ((50, 20, 0), Color 0.5 0.5 0.5)
     , ((3, 2, 20), Color 0.2 0.2 0.2)
     ]
-    {-
---sfcs = Sphere (6, 6, 1.76) 0.75 mat_sphere:
---       Sphere (5, 2, 1.76) 0.75 mat_sphere: 
-
---       Sphere (3, 3, 3) 2 mat_glass:
-
---       Triangle (0, 0, -1) (0, 0, 1) (0, 8, 1) mat_white_tri:
---       Triangle (0, 8, 1) (0, 8, -1) (0, 0, -1) mat_white_tri:
---       Triangle (8, 8, 1) (8, 0, 1) (8, 0, -1) mat_white_tri:
---       Triangle (8, 0, -1) (8, 8, -1) (8, 8, 1) mat_white_tri:
-
---       Triangle (0, 0, -1) (0, 0, 1) (8, 0, 1) mat_white_tri:
---       Triangle (8, 0, 1) (8, 0, -1) (0, 0, -1) mat_white_tri:
---       Triangle (8, 8, 1) (0, 8, 1) (0, 8, -1) mat_white_tri:
---       Triangle (0, 8, -1) (8, 8, -1) (8, 8, 1) mat_white_tri:
-
---       [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [0,2..6], y <- [0,2..6] ]
---       ++ 
---       [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [0,2..6], y <- [0,2..6] ]
---       ++
---       [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_red_tri | x <- [1,3..7], y <- [1,3..7] ]
---       ++
---       [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_red_tri | x <- [1,3..7], y <- [1,3..7] ]
---       ++
---       [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [1,3..7], y <- [0,2..6] ]
---       ++
---       [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [1,3..7], y <- [0,2..6] ]
---       ++
---       [ Triangle (x, y, 1) (x+1, y, 1) (x+1, y+1, 1) mat_black_tri | x <- [0,2..6], y <- [1,3..7] ]
---       ++
---       [ Triangle (x, y, 1) (x+1, y+1, 1) (x, y+1, 1) mat_black_tri | x <- [0,2..6], y <- [1,3..7] ] 
---       
---planes' = [ Plane (0, 0, -1.0) (1, 0, -1) (1, 1, -1) mat_plane ]
---lts = [ ((50, 1, 100), Color 1 1 1)
---      , ((4, 12, 20), Color 0.2 0.2 0.2)
---      ]
--}
 amb = Color 0.1 0.1 0.1
           

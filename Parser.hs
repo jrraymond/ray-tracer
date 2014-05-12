@@ -63,9 +63,9 @@ module Parser where
               skipMany space 
               return (Color x y z)
 
-  readColors s = case parse (many color) "" s of 
-                       Left err -> Left err
-                       Right xs -> Right (Map.fromList xs)
+  readColors _ s = case parse (many color) "" s of 
+                         Left err -> Left err
+                         Right xs -> Right (Map.fromList xs)
 
   material :: GenParser Char (Map String Color) (String,Material)
   material = do string "Material"
@@ -80,7 +80,7 @@ module Parser where
                 attn <- color' <|> identColor
                 return (key,(amb,dif,spe, bp,refl, refr,attn))
 
-  readMaterials s m = case runParser (many material) m "" s of
+  readMaterials m s = case runParser (many material) m "" s of
                         Left err -> Left err
                         Right xs -> Right (Map.fromList xs)
   point = do skipMany space
@@ -135,31 +135,7 @@ module Parser where
 
   shape = sphere <|> triangle <|> plane
 
-  readShapes :: [Char] -> Map [Char] Material -> Either ParseError [([Char], Shape)]
-  readShapes ss m = runParser (many shape) m "" ss
-
-
-  {-
-  main :: IO ()
-  main = do putStrLn "Enter color file: "
-            colorFile <- getLine
-            cs <- readFile colorFile
-            colorMap <- case readColors cs of
-                             Left err -> putStr (show err) >> exitWith (ExitFailure 1)
-                             Right m -> return m
-            print colorMap
-            putStrLn "Enter material file: "
-            materialFile <- getLine
-            ms <- readFile materialFile
-            matMap <- case readMaterials ms colorMap of
-                        Left err -> putStr (show err) >> exitWith (ExitFailure 1)
-                        Right m -> return m
-            print matMap
-            putStrLn "Enter shape file: "
-            shapeFile <- getLine
-            ss <- readFile shapeFile
-            shapes <- case readShapes ss matMap of
-                        Left err -> putStr (show err) >> exitWith (ExitFailure 1)
-                        Right m -> return m
-            print shapes
-  -}
+  readShapes :: Map String Material -> String -> Either ParseError (Map String Shape)
+  readShapes m ss = case runParser (many shape) m "" ss of
+                      Left err -> Left err
+                      Right m' -> Right $ Map.fromList m'
