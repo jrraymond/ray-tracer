@@ -154,7 +154,7 @@ mat_sphere = ( Color 0.5 0.2 0.5
                , Color 1.0 1.0 1.0
                , 100.0
                , Color 0 0 0
-               , 1
+               , 0
                , Color 0 0 0
                )
 mat_plane = ( Color 0.6 0.6 0.6
@@ -162,7 +162,7 @@ mat_plane = ( Color 0.6 0.6 0.6
               , Color 1.0 1.0 1.0
               , 10.0
               , Color 0.0 0.0 0.0
-              , 1
+              , 0
               , Color 0 0 0
             )
 mat_black_tri = ( Color 0 0 0
@@ -170,7 +170,7 @@ mat_black_tri = ( Color 0 0 0
                 , Color 0.4 0.4 0.4
                 , 100.0
                 , Color 1 1 1
-                , 1
+                , 0
                 , Color 1 1 1
                 )
 mat_red_tri = ( Color 1 0 0
@@ -178,7 +178,7 @@ mat_red_tri = ( Color 1 0 0
               , Color 0.6 0.6 0.6
               , 100.0
               , Color 1 1 1
-              , 1
+              , 0
               , Color 1 1 1
               )
 mat_white_tri = ( Color 1 1 1
@@ -186,30 +186,30 @@ mat_white_tri = ( Color 1 1 1
                 , Color 0.4 0.4 0.4
                 , 10
                 , Color 0 0 0
-                , 1
+                , 0
                 , Color 1 1 1
               )
-mat_glass = ( Color 0 0 1
-          , Color 0 0 1
-          , Color 0.6 0.6 0.6
-          , 10
-          , Color 1 1 1
-          , 2.3
-          , Color 0 1 0
+mat_glass = ( Color 0 0 0
+          , Color 0 0 0
+          , Color 0 0 0
+          , 1
+          , Color 0 0 0
+          , 1.5
+          , Color 0 0.2 0.7
           )
 mat_triangle = ( Color 1 (215/255) 0
              , Color 1 (215/255) 0
                , Color 0 0 0
                , 10
                , Color 0 0 0
-               , 1
+               , 0
                , Color 1 1 1
                )
-sfcs = [ Sphere (3, 1, 5) 2 mat_sphere
+sfcs = [ Sphere (3, 1, 5) 2 mat_glass
        , Sphere (4, 10, 2) 1 mat_sphere
        , Sphere (4, 0, 12) 1 mat_sphere
        , Sphere (14, 0, 2) 1 mat_sphere
-       , Triangle (-10, -1, -10) (10, -1, -10) (-10, 5, -10) mat_triangle
+       , Triangle (-10, -1, -10) (10, -1, -10) (-10, 5, -10) mat_glass
        , Triangle (-10, 5, -10) (10, -1, -10) (10, 5, -10) mat_triangle
        , Triangle (-10, -1, -10) (-10, 5, -10) (-10, 5, 10) mat_triangle
        , Triangle (-10, -1, -10) (-10, 5, 10) (-10, -1, 10) mat_triangle
