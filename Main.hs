@@ -35,13 +35,13 @@ main = do
 
     colorFin <- checkFile $ optColorF opts
     colorMap <- checkSource $ readColors Map.empty colorFin 
-    print colorMap
+--    print colorMap
     matFin <- checkFile $ optMaterialF opts
     matMap <-  checkSource $ readMaterials colorMap matFin
-    print matMap
+ --   print matMap
     shapeFin <- checkFile $ optShapeF opts
     shapeMap <- checkSource $ readShapes matMap shapeFin
-    print shapeMap
+  --  print shapeMap
 
     let (planes',shapes') = partition isPlane $ map snd (Map.toList shapeMap)
         world = World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd

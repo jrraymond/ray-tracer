@@ -38,7 +38,6 @@ module RayTracer (render
     pixels = [ (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
     (wd,ht) = imgDim world
     ps' = map (rayTrace refldepth world . getRays world) pixels `using` parListChunk 500 rseq
-
   flatten :: [Color] -> [Float]
   flatten [] = []
   flatten (Color x y z:xs) = x:y:z:flatten xs

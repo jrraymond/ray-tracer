@@ -4,15 +4,20 @@ module Surfaces
   import Geometry3
   import Data.Semigroup
   import Data.List.NonEmpty (NonEmpty, NonEmpty((:|)))
+  import Control.DeepSeq
 
   data Axis = AxisX | AxisY | AxisZ deriving (Show, Eq)
   data Color = Color !Float !Float !Float deriving (Show, Eq)
+
 
   instance Monoid Color where
     (Color r g b) `mappend` (Color r' g' b') = Color (r + r') (g + g') (b + b')
     mempty = Color 0 0 0
     
-    
+  instance NFData Color where
+    rnf (Color r g b) = rnf r `seq` rnf g `seq` rnf b
+
+
   epsilon :: Float
   epsilon = 0.001
 
