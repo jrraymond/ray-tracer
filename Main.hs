@@ -40,10 +40,11 @@ main = do
     matMap <-  checkSource $ readMaterials colorMap matFin
  --   print matMap
     shapeFin <- checkFile $ optShapeF opts
-    shapeMap <- checkSource $ readShapes matMap shapeFin
-  --  print shapeMap
+--    shapeMap <- checkSource $ readShapes matMap shapeFin
+    shapeExprMap <- checkSource $ readShapesExpr matMap shapeFin
+    print shapeExprMap
 
-    let (planes',shapes') = partition isPlane $ map snd (Map.toList shapeMap)
+    let (planes',shapes') = partition isPlane $ map snd (Map.toList undefined)
         world = World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd
         pixels = render world
         display :: GLUT.DisplayCallback
