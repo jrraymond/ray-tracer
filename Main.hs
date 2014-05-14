@@ -74,7 +74,7 @@ main = do
                           !world <- return $ World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd
                           !pixels' <- return $ invertY iwd iht (render world)
                           putStrLn $ "Writing frame " ++ show i
-                          writePPM ("output" ++ show i ++ ".ppm") iwd iht pixels'
+                          writePPM ("img/output" ++ show i ++ ".ppm") iwd iht pixels'
                           go (i - 0.5)
              | otherwise   = putStrLn "All done!" >> return () 
     go 10
