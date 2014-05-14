@@ -77,7 +77,7 @@ main = do
                           writePPM ("img/output" ++ show i ++ ".ppm") iwd iht pixels'
                           go (i - 0.5)
              | otherwise   = putStrLn "All done!" >> return () 
-    go 10
+    go 2
 
 reshape :: GLUT.ReshapeCallback
 reshape size = GLUT.viewport GLUT.$= (GLUT.Position 0 0, size)
