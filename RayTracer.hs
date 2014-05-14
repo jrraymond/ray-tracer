@@ -135,6 +135,7 @@ module RayTracer (render
   getReflectionRay :: Vec3 -> Pt3 -> Vec3 -> Float -> Ray3
   getReflectionRay dir p n 0 = Ray3 (p, normalize $ subt dir $ multiply n (2 * dot dir n))
   getReflectionRay dir p n g = ray where
+    gloss = 1 / g
     r@(rx, ry, rz) = normalize $ subt dir $ multiply n (2 * dot dir n)
     t = if abs rx < abs ry && abs rx < abs rz
         then (1, ry, rz)
@@ -144,11 +145,11 @@ module RayTracer (render
     u = normalize $ cross t r
     v = cross r u
 
-    seed = floor $ magnitude2 $ multiply n (magnitude $ cross v t)
-    xi : xi' : [] = take 2 $ randomRs (-g/2, g/2) (mkStdGen seed)
+    seed = floor $ 100 * ((magnitude2 $ multiply n (magnitude $ cross v t)) + rx + ry + rz)
+    xi : xi' : [] = take 2 $ randomRs (-gloss/2, gloss/2) (mkStdGen seed)
 
-    u' = -g / 2 + xi * g
-    v' = -g / 2 + xi' * g
+    u' = -gloss / 2 + xi * gloss
+    v' = -gloss / 2 + xi' * gloss
     ray = Ray3 (p, normalize $ add r $ add (multiply u u') (multiply v v'))
 
   {- TODO: fix the kr, kg, kg constants. Figure out what non-vector t is exactly -}
