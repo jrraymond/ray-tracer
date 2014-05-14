@@ -209,26 +209,50 @@ module Parser where
                  | TriangleE (Expr,Expr,Expr) (Expr,Expr,Expr) (Expr,Expr,Expr) Material
                  deriving Show
 
-  data Op = NegOp | PlusOp | ProdOp | MinusOp | DivOp  | PowOp deriving (Show, Eq)
-
-  data Expr = UnaryNode Op Expr
-           | BinaryNode Op Expr Expr
+  data OpU = NegOpU | PlusOpU deriving Show
+  data OpB = PlusOpB | ProdOpB | MinusOpB | DivOpB  | PowOpB deriving Show
+  evalOpU :: OpU -> (Float -> Float)
+  evalOpU NegOpU = negate
+  evalOpU PlusOpU = id
+  evalOpB :: OpB -> (Float -> Float -> Float)
+  evalOpB PlusOpB = (+)
+  evalOpB MinusOpB = (-)
+  evalOpB ProdOpB = (*)
+  evalOpB DivOpB = (/)
+  evalOpB PowOpB = (**)
+  data Expr = UnaryNode OpU Expr
+           | BinaryNode OpB Expr Expr
            | NumNode Float
            | VarNodeT
            | VarNodeX
            | VarNodeY
            | VarNodeZ
     deriving Show
+  evalExpr :: Float -> Expr -> Float
+  evalExpr t (UnaryNode op e) = evalOpU op $ evalExpr t e
+  evalExpr t (BinaryNode op e1 e2) = (evalOpB op) (evalExpr t e1) (evalExpr t e2)
+  evalExpr _ (NumNode f) = f
+  evalExpr t VarNodeT = t
+  evalExpr _ _ = error "unimplemented"
+
+  evalExprTuple :: Float -> (Expr,Expr,Expr) -> (Float,Float,Float)
+  evalExprTuple t (x,y,z) = (evalExpr t x, evalExpr t y, evalExpr t z)
+
+  evalShapeExpr :: Float -> ShapeExpr -> Shape
+  evalShapeExpr t (SphereE c r mat) = Sphere (evalExprTuple t c) (evalExpr t r) mat
+  evalShapeExpr t (TriangleE a b c mat) = Triangle (evalExprTuple t a) (evalExprTuple t b) (evalExprTuple t c) mat
+  evalShapeExpr t (PlaneE a b c mat) = Plane (evalExprTuple t a) (evalExprTuple t b) (evalExprTuple t c) mat
+  evalShapeExpr _ _ = error "unimplemented"
 
   table :: forall s u (m :: * -> *). Stream s m Char => [[Operator s u m Expr]]
-  table = [ [ Prefix (char '+' >> return id)
-            , Prefix (char '-' >> return (UnaryNode NegOp))
+  table = [ [ Prefix (char '+' >> return (UnaryNode PlusOpU))
+            , Prefix (char '-' >> return (UnaryNode NegOpU))
             ]
-          , [ Infix (char '*' >> return (BinaryNode ProdOp)) AssocLeft
-            , Infix (char '/' >> return (BinaryNode DivOp)) AssocLeft 
+          , [ Infix (char '*' >> return (BinaryNode ProdOpB)) AssocLeft
+            , Infix (char '/' >> return (BinaryNode DivOpB)) AssocLeft 
             ]
-          , [ Infix (char '+' >> return (BinaryNode PlusOp)) AssocLeft
-            , Infix (char '-' >> return (BinaryNode MinusOp)) AssocLeft
+          , [ Infix (char '+' >> return (BinaryNode PlusOpB)) AssocLeft
+            , Infix (char '-' >> return (BinaryNode MinusOpB)) AssocLeft
             ]
           ]
 

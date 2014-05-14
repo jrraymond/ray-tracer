@@ -3,6 +3,7 @@
 -
 -  Ray Tracer
 -}
+{-# LANGUAGE BangPatterns #-}
 import Foreign
 import qualified Graphics.UI.GLUT as GLUT
 import qualified Graphics.Rendering.OpenGL as GL
@@ -42,23 +43,22 @@ main = do
     shapeFin <- checkFile $ optShapeF opts
 --    shapeMap <- checkSource $ readShapes matMap shapeFin
     shapeExprMap <- checkSource $ readShapesExpr matMap shapeFin
-    print shapeExprMap
+    --print (getShapesNow 0 (Map.toList shapeExprMap))
 
-    let (planes',shapes') = partition isPlane $ map snd (Map.toList undefined)
-        world = World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd
-        pixels = render world
-        display :: GLUT.DisplayCallback
-        display = do
-          --clears out the graphics color state
-          GLUT.clear [ GLUT.ColorBuffer ]
-          --(GL.Size x y) <- GLUT.get GLUT.windowSize
-          arr <- newArray (flatten pixels) :: IO (Ptr Float)
-          --arr <- FMU.new (VS.replicate 100 (1 :: Float))
-          GL.drawPixels (GL.Size ciwd ciht) (PixelData GL.RGB GL.Float arr)
-          --GL.drawPixels size undefined
-          --pushes our OpenGL commands down to the systems graphics for display
-          GLUT.flush
-    writePPM "output.ppm" iwd iht $ invertY iwd iht pixels
+    --let (planes',shapes') = partition isPlane $ map snd (Map.toList undefined)
+    --    world = World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd
+    --    pixels = render world
+    --    display :: GLUT.DisplayCallback
+    --    display = do
+    --      --clears out the graphics color state
+    --      GLUT.clear [ GLUT.ColorBuffer ]
+    --      --(GL.Size x y) <- GLUT.get GLUT.windowSize
+    --      arr <- newArray (flatten pixels) :: IO (Ptr Float)
+    --      --arr <- FMU.new (VS.replicate 100 (1 :: Float))
+    --      GL.drawPixels (GL.Size ciwd ciht) (PixelData GL.RGB GL.Float arr)
+    --      --GL.drawPixels size undefined
+    --      --pushes our OpenGL commands down to the systems graphics for display
+    --      GLUT.flush
     --GLUT.initialWindowSize GLUT.$= GL.Size ciwd ciht
     ----open the main window
     --_window <- GLUT.createWindow "Ray Tracer"
@@ -67,7 +67,17 @@ main = do
     --GLUT.reshapeCallback GLUT.$= Just reshape
     ----let GLUT take over
     --GLUT.mainLoop
-
+    !shapesExpr <- return $ map snd (Map.toList shapeExprMap)
+    --writePPM "output.ppm" iwd iht $ invertY iwd iht pixels
+    let go :: Float -> IO ()
+        go i | i > 0 = do !(planes',shapes') <- return (partition isPlane (getShapesNow i shapesExpr))
+                          !world <- return $ World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd
+                          !pixels' <- return $ invertY iwd iht (render world)
+                          putStrLn $ "Writing frame " ++ show i
+                          writePPM ("output" ++ show i ++ ".ppm") iwd iht pixels'
+                          go (i - 0.5)
+             | otherwise   = putStrLn "All done!" >> return () 
+    go 10
 
 reshape :: GLUT.ReshapeCallback
 reshape size = GLUT.viewport GLUT.$= (GLUT.Position 0 0, size)
@@ -160,11 +170,8 @@ checkSource s = do case s of
                       Right m -> return m
 
 
-
-
-
-
-
+getShapesNow :: Float -> [ShapeExpr] -> [Shape]
+getShapesNow t = map (evalShapeExpr t) 
 
 --eye' = (-4, 4, 7)
 --lookAt' = (8,4,1)
