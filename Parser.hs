@@ -1,6 +1,14 @@
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE BangPatterns #-}
 module Parser where
+  import Debug.Trace
   import Control.Applicative hiding (many, (<|>))
   import System.Exit
+  import Text.Parsec hiding (runParser)
+  import Text.Parsec.Expr
   import Text.ParserCombinators.Parsec
   import Data.Map (Map)
   import qualified Data.Map as Map
@@ -12,8 +20,7 @@ module Parser where
         <?> "end of line"
   comment :: Parser ()
   comment = do char '#'
-               skipMany (noneOf "\r\n")
-            <?> "comment"
+               skipMany (noneOf "\r\n") <?> "comment"
   floats = many float
   --ident :: Parser String
   ident = do skipMany space
@@ -82,11 +89,14 @@ module Parser where
                 skipMany space
                 return (key,(amb, dif, spe, bp, refl, refr, attn, gloss))
 
+  readMaterials :: Map String Color -> [Char] -> Either ParseError (Map String Material)
   readMaterials m s = case runParser (many material) m "" s of
                         Left err -> Left err
                         Right xs -> Right (Map.fromList xs)
+
+  point :: forall s u (m :: * -> *). Stream s m Char => ParsecT s u m (Float, Float, Float)
   point = do skipMany space
-             char '('
+             _ <- char '('
              skipMany space
              x <- float
              skipMany space
@@ -94,10 +104,33 @@ module Parser where
              skipMany space
              z <- float
              skipMany space
-             char ')'
+             _ <- char ')'
              skipMany space
              return (x, y, z)
+  --TODO generalize this replicateM or something
+  sepBy3 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+  sepBy3 p sep = do x <- p
+                    _ <- sep
+                    y <- p
+                    _ <- sep
+                    z <- p
+                    return (x:y:z:[])
 
+  pointExpr :: forall s u (m :: * -> *). Stream s m Char => ParsecT s u m (Expr, Expr, Expr)
+  pointExpr = do skipMany space
+                 _ <- char '('
+                 skipMany space
+                 x <- expr
+                 skipMany space
+                 y <- expr
+                 skipMany space
+                 z <- expr
+                 skipMany space
+                 _ <- char ')'
+                 skipMany space
+                 return (x, y, z)
+
+  identMaterial :: forall s (m :: * -> *) a. Stream s m Char => ParsecT s (Map [Char] a) m a
   identMaterial = do c <- letter <|> char '_'
                      cs <- many (letter <|> digit <|> char '_')
                      skipMany space
@@ -107,37 +140,142 @@ module Parser where
                                 Just c' -> c'
                      <?> "identifier"
 
+  sphere :: forall s (m :: * -> *). Stream s m Char => ParsecT s (Map [Char] Material) m ([Char], Shape)
   sphere = do string "Sphere"
               key <- ident
               char '='
               center <- point
               radius <- float
               skipMany space
-              material <- identMaterial
-              return (key, Sphere center radius material)
+              mat <- identMaterial
+              return (key, Sphere center radius mat)
 
+  sphereExpr :: forall s (m :: * -> *). Stream s m Char => ParsecT s (Map [Char] Material) m ([Char], ShapeExpr)
+  sphereExpr = do string "Sphere"
+                  key <- ident
+                  char '='
+                  center <- pointExpr
+                  radius <- expr
+                  skipMany space
+                  mat <- identMaterial
+                  return (key, SphereE center radius mat)
+
+  triangle :: forall s (m :: * -> *). Stream s m Char => ParsecT s (Map [Char] Material) m ([Char], Shape)
   triangle = do string "Triangle"
                 key <- ident
-                char '='
+                _ <- char '='
                 a <- point
                 b <- point
                 c <- point
-                material <- identMaterial
-                return (key, Triangle a b c material)
+                mat <- identMaterial
+                return (key, Triangle a b c mat)
 
+  triangleExpr :: forall s (m :: * -> *). Stream s m Char => ParsecT s (Map [Char] Material) m ([Char], ShapeExpr)
+  triangleExpr = do string "Triangle"
+                    key <- ident
+                    _ <- char '='
+                    a <- pointExpr
+                    b <- pointExpr
+                    c <- pointExpr
+                    mat <- identMaterial
+                    return (key, TriangleE a b c mat)
+
+  plane :: forall s (m :: * -> *). Stream s m Char => ParsecT s (Map [Char] Material) m ([Char], Shape)
   plane = do string "Plane"
              key <- ident
-             char '='
+             _ <- char '='
              a <- point
              b <- point
              c <- point
-             material <- identMaterial
-             return (key, Plane a b c material)
+             mat <- identMaterial
+             return (key, Plane a b c mat)
 
+  planeExpr :: forall s (m :: * -> *). Stream s m Char => ParsecT s (Map [Char] Material) m ([Char], ShapeExpr)
+  planeExpr = do string "Plane"
+                 key <- ident
+                 _ <- char '='
+                 a <- pointExpr
+                 b <- pointExpr
+                 c <- pointExpr
+                 mat <- identMaterial
+                 return (key, PlaneE a b c mat)
 
+  shape :: forall s (m :: * -> *). Stream s m Char => ParsecT s (Map [Char] Material) m ([Char], Shape)
   shape = sphere <|> triangle <|> plane
+
+  shapeExpr :: forall s (m :: * -> *). Stream s m Char => ParsecT s (Map [Char] Material) m ([Char], ShapeExpr)
+  shapeExpr = sphereExpr <|> triangleExpr <|> planeExpr
+
+  data ShapeExpr = SphereE (Expr,Expr,Expr) Expr Material 
+                 | PlaneE (Expr,Expr,Expr) (Expr,Expr,Expr) (Expr,Expr,Expr) Material
+                 | TriangleE (Expr,Expr,Expr) (Expr,Expr,Expr) (Expr,Expr,Expr) Material
+                 deriving Show
+
+  data OpU = NegOpU | PlusOpU deriving Show
+  data OpB = PlusOpB | ProdOpB | MinusOpB | DivOpB  | PowOpB deriving Show
+  evalOpU :: OpU -> (Float -> Float)
+  evalOpU NegOpU = negate
+  evalOpU PlusOpU = id
+  evalOpB :: OpB -> (Float -> Float -> Float)
+  evalOpB PlusOpB = (+)
+  evalOpB MinusOpB = (-)
+  evalOpB ProdOpB = (*)
+  evalOpB DivOpB = (/)
+  evalOpB PowOpB = (**)
+  data Expr = UnaryNode OpU Expr
+           | BinaryNode OpB Expr Expr
+           | NumNode Float
+           | VarNodeT
+           | VarNodeX
+           | VarNodeY
+           | VarNodeZ
+    deriving Show
+  evalExpr :: Float -> Expr -> Float
+  evalExpr t (UnaryNode op e) = evalOpU op $ evalExpr t e
+  evalExpr t (BinaryNode op e1 e2) = (evalOpB op) (evalExpr t e1) (evalExpr t e2)
+  evalExpr _ (NumNode f) = f
+  evalExpr t VarNodeT = t
+  evalExpr _ _ = error "unimplemented"
+
+  evalExprTuple :: Float -> (Expr,Expr,Expr) -> (Float,Float,Float)
+  evalExprTuple t (x,y,z) = (evalExpr t x, evalExpr t y, evalExpr t z)
+
+  evalShapeExpr :: Float -> ShapeExpr -> Shape
+  evalShapeExpr t (SphereE c r mat) = Sphere (evalExprTuple t c) (evalExpr t r) mat
+  evalShapeExpr t (TriangleE a b c mat) = Triangle (evalExprTuple t a) (evalExprTuple t b) (evalExprTuple t c) mat
+  evalShapeExpr t (PlaneE a b c mat) = Plane (evalExprTuple t a) (evalExprTuple t b) (evalExprTuple t c) mat
+  evalShapeExpr _ _ = error "unimplemented"
+
+  table :: forall s u (m :: * -> *). Stream s m Char => [[Operator s u m Expr]]
+  table = [ [ Prefix (char '+' >> return (UnaryNode PlusOpU))
+            , Prefix (char '-' >> return (UnaryNode NegOpU))
+            ]
+          , [ Infix (char '*' >> return (BinaryNode ProdOpB)) AssocLeft
+            , Infix (char '/' >> return (BinaryNode DivOpB)) AssocLeft 
+            ]
+          , [ Infix (char '+' >> return (BinaryNode PlusOpB)) AssocLeft
+            , Infix (char '-' >> return (BinaryNode MinusOpB)) AssocLeft
+            ]
+          ]
+
+  term :: forall s u (m :: * -> *). Stream s m Char => ParsecT s u m Expr
+  term = fmap NumNode float <|>
+         (char 't' >> return VarNodeT) <|>
+         (char 'x' >> return VarNodeX) <|>
+         (char 'y' >> return VarNodeY) <|>
+         (char 'z' >> return VarNodeZ) 
+         <?> "term"
+
+  expr :: forall s u (m :: * -> *). Stream s m Char => ParsecT s u m Expr
+  expr = buildExpressionParser table term
+
 
   readShapes :: Map String Material -> String -> Either ParseError (Map String Shape)
   readShapes m ss = case runParser (many shape) m "" ss of
                       Left err -> Left err
                       Right m' -> Right $ Map.fromList m'
+  
+  readShapesExpr :: Map String Material -> String -> Either ParseError (Map String ShapeExpr)
+  readShapesExpr m ss = case runParser (many shapeExpr) m "" ss of
+                          Left err -> Left err
+                          Right m' -> Right $ Map.fromList m'
