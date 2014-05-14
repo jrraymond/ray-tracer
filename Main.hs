@@ -33,6 +33,8 @@ main = do
         as = fromMaybe 0 (optAntiAliasing opts)
         ss = fromMaybe 1 (optSoftShadows opts)
         rd = fromMaybe 2 (optReflDepth opts)
+        frames = fromIntegral (fromMaybe 1 (optFrames opts))
+  
 
     colorFin <- checkFile $ optColorF opts
     colorMap <- checkSource $ readColors Map.empty colorFin 
@@ -75,9 +77,9 @@ main = do
                           !pixels' <- return $ invertY iwd iht (render world)
                           putStrLn $ "Writing frame " ++ show i
                           writePPM ("output" ++ show i ++ ".ppm") iwd iht pixels'
-                          go (i - 0.5)
+                          go (i - 1)
              | otherwise   = putStrLn "All done!" >> return () 
-    go 10
+    go frames
 
 reshape :: GLUT.ReshapeCallback
 reshape size = GLUT.viewport GLUT.$= (GLUT.Position 0 0, size)
@@ -125,6 +127,7 @@ data Options = Options
   , optAntiAliasing :: Maybe Int
   , optSoftShadows :: Maybe Int
   , optReflDepth :: Maybe Int
+  , optFrames :: Maybe Int
   } deriving Show
 
 defaultOptions :: Options
@@ -137,6 +140,7 @@ defaultOptions = Options
   , optAntiAliasing = Just 1
   , optSoftShadows = Just 0
   , optReflDepth = Just 2
+  , optFrames = Just 1
   }
 
 options :: [OptDescr (Options -> Options)]
@@ -149,6 +153,7 @@ options =
     , Option [] ["antialiasing"] (ReqArg (\a opts -> opts { optAntiAliasing = readInt a}) "1") "antialiasing level"
     , Option [] ["softshadows"] (ReqArg (\s opts -> opts { optSoftShadows = readInt s }) "0") "shoftshadow level"
     , Option [] ["reflectiondepth"] (ReqArg (\d opts -> opts { optReflDepth = readInt d}) "2") "reflection depth"
+    , Option ['f'] ["frames"] (ReqArg (\f opts -> opts { optFrames = readInt f}) "1") "frames"
     ]
 
 readInt :: String -> Maybe Int
