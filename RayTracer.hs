@@ -88,7 +88,9 @@ module RayTracer (render
           , softshadows = shdwRays
           } = world
     refr = getRefraction world ray p n i rf
-    refl = getScaledColor r (getReflection world ray p n g depth) 1
+    refl = if r == mempty
+           then mempty
+           else (getScaledColor r (getReflection world ray p n g depth) 1)
     diff_phong = mconcat $ map (getDiffuseAndPhong shdwRays ray m n p bbTree') lights'
     amb = getScaledColor a ambient' 1
     color = diff_phong `mappend` amb `mappend` refl `mappend` refr
@@ -135,7 +137,6 @@ module RayTracer (render
   getReflectionRay :: Vec3 -> Pt3 -> Vec3 -> Float -> Ray3
   getReflectionRay dir p n 0 = Ray3 (p, normalize $ subt dir $ multiply n (2 * dot dir n))
   getReflectionRay dir p n g = ray where
-    gloss = 1 / g
     r@(rx, ry, rz) = normalize $ subt dir $ multiply n (2 * dot dir n)
     t = if abs rx < abs ry && abs rx < abs rz
         then (1, ry, rz)
@@ -145,17 +146,19 @@ module RayTracer (render
     u = normalize $ cross t r
     v = cross r u
 
+    {- Create a not so random seed -}
     seed = floor $ 100 * ((magnitude2 $ multiply n (magnitude $ cross v t)) + rx + ry + rz)
-    xi : xi' : [] = take 2 $ randomRs (-gloss/2, gloss/2) (mkStdGen seed)
+    xi : xi' : [] = take 2 $ randomRs (-g/2, g/2) (mkStdGen seed)
 
-    u' = -gloss / 2 + xi * gloss
-    v' = -gloss / 2 + xi' * gloss
+    u' = -g / 2 + xi * g
+    v' = -g / 2 + xi' * g
     ray = Ray3 (p, normalize $ add r $ add (multiply u u') (multiply v v'))
 
   {- TODO: fix the kr, kg, kg constants. Figure out what non-vector t is exactly -}
   getRefraction :: World -> Ray3 -> Pt3 -> Vec3 -> Float -> Color -> Color
   getRefraction _ _ _ _ 0 _ = (Color 0 0 0)
   getRefraction world (Ray3 (_, dir)) p n i (Color ar ag ab) = color where
+    World { reflDepth = depth } = world
     refl = subt dir $ multiply n (2 * dot dir n)
     (c, kr, kg, kb, t) = if dot dir n < 0
                          then ((-1) * (dot n dir), 1, 1, 1, refract dir n i)
@@ -177,7 +180,8 @@ module RayTracer (render
     color = case t of 
             Nothing -> 
               let
-                (Color r g b) = rayTrace 3 world [(Ray3 (p, refl))]
+                
+                (Color r g b) = rayTrace depth world [(Ray3 (p, refl))]
               in
                 (Color (kr*r) (kg*g) (kb*b))
             Just s -> 
@@ -188,7 +192,7 @@ module RayTracer (render
                  -}
                 --(Color r g b) = (getScaledColor (rayTrace 3 world [(Ray3 (p, refl))]) (Color 1 1 1) f) `mappend`
                 --    (getScaledColor (rayTrace 3 world [(Ray3 (p, s))]) (Color 1 1 1) (1 - f))
-                (Color r g b) = rayTrace 3 world [(Ray3 (p, refl))] `mappend` rayTrace 3 world [(Ray3 (p, s))]
+                (Color r g b) = rayTrace depth world [(Ray3 (p, refl))] `mappend` rayTrace depth world [(Ray3 (p, s))]
               in
                 (Color (kr*r) (kg*g) (kb*b))
 

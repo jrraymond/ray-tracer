@@ -1,9 +1,9 @@
-Material mat_plane    = grey grey black 10.0 grey 0.0 black 1123123.0
-Material mat_sphere   = blue blue white 100.0  grey 0.0  black 0.0
+Material mat_plane    = blue blue black 10.0 grey 0.0 turquoise 0.125
+Material mat_sphere   = purple purple white 100.0  grey 0.0  black 0.0
 Material btriangle = black  black  grey2  100.0  white  0.0  white 0.0
 Material rtriangle = red  red  grey  100.0  white  0.0  white 0.0
 Material mat_white_tri = white  white  grey2 10.0 black 0.0  black 0.0
 Material mat_yellow_tri = yellow yellow yellow 10.0 black 0.0 black 0.0
-Material mat_glass    = blue blue  grey   10.0 white  1.5  green 0.0
-Material mat_gloss = blue blue white 100.0 grey 0.0 blue 0.146
+Material mat_glass    = purple purple grey   10.0 white  1.5  green 0.0
+Material mat_gloss = purple purple white 100.0 grey 0.0 purple 0.124
 Material mat_emerald = emerald emerald grey 1.0 grey 1.2 turquoise 0
