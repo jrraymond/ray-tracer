@@ -5,4 +5,4 @@ Material rtriangle = red  red  grey  100.0  white  0.0  white 0.0
 Material mat_white_tri = white  white  grey2 10.0 black 0.0  black 0.0
 Material mat_yellow_tri = yellow yellow yellow 10.0 black 0.0 black 0.0
 Material mat_glass    = blue blue  grey   10.0 white  1.5  green 0.0
-Material mat_gloss = blue blue white 100.0 grey 0.0 blue 1.2
+Material mat_gloss = blue blue white 100.0 grey 0.0 blue 0.146

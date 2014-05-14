@@ -127,9 +127,10 @@ module RayTracer (render
 
   getReflection :: World -> Ray3 -> Pt3 -> Vec3 -> Float -> Int -> Color
   getReflection world (Ray3 (_, dir)) p n g depth = color where
-    --refRay = Ray3 (p, subt dir $ multiply n (2 * dot dir n))
-    refRay = getReflectionRay dir p n g 
-    color = rayTrace (depth - 1) world [refRay]
+    refRay@(Ray3 (_, refdir)) = getReflectionRay dir p n g 
+    color = if dot n refdir < 0.0
+            then Color 0 0 0
+            else rayTrace (depth - 1) world [refRay]
 
   getReflectionRay :: Vec3 -> Pt3 -> Vec3 -> Float -> Ray3
   getReflectionRay dir p n 0 = Ray3 (p, normalize $ subt dir $ multiply n (2 * dot dir n))
@@ -144,7 +145,7 @@ module RayTracer (render
     v = cross r u
 
     seed = floor $ magnitude2 $ multiply n (magnitude $ cross v t)
-    xi : xi' : [] = take 2 $ randomRs (-g, g) (mkStdGen seed)
+    xi : xi' : [] = take 2 $ randomRs (-g/2, g/2) (mkStdGen seed)
 
     u' = -g / 2 + xi * g
     v' = -g / 2 + xi' * g
