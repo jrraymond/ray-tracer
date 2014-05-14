@@ -1,4 +1,4 @@
-Sphere s1 = (3 1 5) 2 mat_sphere
+Sphere s1 = (3 1 5) 2 mat_gloss
 Sphere s2 = (4 10 2) 0.75 mat_sphere
 Sphere s3 = (4.2 0 12) 0.25 mat_glass
 Sphere s4 = (13 0 3) 2 mat_glass 

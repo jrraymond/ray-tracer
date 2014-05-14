@@ -78,7 +78,9 @@ module Parser where
                 refl <- color' <|> identColor
                 refr <- float
                 attn <- color' <|> identColor
-                return (key,(amb,dif,spe, bp,refl, refr,attn))
+                gloss <- float
+                skipMany space
+                return (key,(amb, dif, spe, bp, refl, refr, attn, gloss))
 
   readMaterials m s = case runParser (many material) m "" s of
                         Left err -> Left err

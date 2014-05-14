@@ -9,6 +9,7 @@ module RayTracer (render
   import Data.Semigroup
   import Data.Maybe (catMaybes)
   import Control.Parallel.Strategies hiding (dot)
+  import System.Random
 
   type Width = Int
   type Height = Int
@@ -80,20 +81,20 @@ module RayTracer (render
   
   getColor :: World -> Ray3 -> HitRec -> Int -> Color
   getColor _ _ _ 0 = Color 0 0 0
-  getColor world ray (HitRec p n _ m@(a, _, _, _, r, i, rf)) depth = color where
+  getColor world ray (HitRec p n _ m@(a, _, _, _, r, i, rf, g)) depth = color where
     World { lights = lights' 
           , ambient = ambient'
           , bbTree = bbTree'
           , softshadows = shdwRays
           } = world
     refr = getRefraction world ray p n i rf
-    refl = getScaledColor r (getReflection world ray p n depth) 1
+    refl = getScaledColor r (getReflection world ray p n g depth) 1
     diff_phong = mconcat $ map (getDiffuseAndPhong shdwRays ray m n p bbTree') lights'
     amb = getScaledColor a ambient' 1
     color = diff_phong `mappend` amb `mappend` refl `mappend` refr
   
   getDiffuseAndPhong :: Int -> Ray3 -> Material -> Vec3 -> Pt3 -> Surfaces -> Light -> Color
-  getDiffuseAndPhong shdwRays (Ray3 (_,rdir)) (_, d, s, bp, _, _, _) n pt bbtree (lp, l) 
+  getDiffuseAndPhong shdwRays (Ray3 (_,rdir)) (_, d, s, bp, _, _, _, _) n pt bbtree (lp, l) 
     | shdwRays == 0 = f (Ray3 (pt,light_dir),light_dir)
     | otherwise = ss_color where
     light_pts = map (add lp) $ getHammerslayPoints 8 -- test with 8
@@ -124,15 +125,35 @@ module RayTracer (render
   getScaledColor (Color mr mg mb) (Color lr lg lb) s = 
     Color (mr * lr * s) (mg * lg * s) (mb * lb * s)
 
-  getReflection :: World -> Ray3 -> Pt3 -> Vec3 -> Int -> Color
-  getReflection world (Ray3 (_, dir)) p n depth = color where
-    refRay = Ray3 (p, subt dir $ multiply n (2 * dot dir n))
+  getReflection :: World -> Ray3 -> Pt3 -> Vec3 -> Float -> Int -> Color
+  getReflection world (Ray3 (_, dir)) p n g depth = color where
+    --refRay = Ray3 (p, subt dir $ multiply n (2 * dot dir n))
+    refRay = getReflectionRay dir p n g 
     color = rayTrace (depth - 1) world [refRay]
-  
+
+  getReflectionRay :: Vec3 -> Pt3 -> Vec3 -> Float -> Ray3
+  getReflectionRay dir p n 0 = Ray3 (p, normalize $ subt dir $ multiply n (2 * dot dir n))
+  getReflectionRay dir p n g = ray where
+    r@(rx, ry, rz) = normalize $ subt dir $ multiply n (2 * dot dir n)
+    t = if abs rx < abs ry && abs rx < abs rz
+        then (1, ry, rz)
+        else if abs ry < abs rz
+        then (rx, 1, rz)
+        else (rx, ry, 1)
+    u = normalize $ cross t r
+    v = cross r u
+
+    seed = floor $ magnitude2 $ multiply n (magnitude $ cross v t)
+    xi : xi' : [] = take 2 $ randomRs (-g, g) (mkStdGen seed)
+
+    u' = -g / 2 + xi * g
+    v' = -g / 2 + xi' * g
+    ray = Ray3 (p, normalize $ add r $ add (multiply u u') (multiply v v'))
+
   {- TODO: fix the kr, kg, kg constants. Figure out what non-vector t is exactly -}
   getRefraction :: World -> Ray3 -> Pt3 -> Vec3 -> Float -> Color -> Color
   getRefraction _ _ _ _ 0 _ = (Color 0 0 0)
-  getRefraction world (Ray3 (e, dir)) p n i (Color ar ag ab) = color where
+  getRefraction world (Ray3 (_, dir)) p n i (Color ar ag ab) = color where
     refl = subt dir $ multiply n (2 * dot dir n)
     (c, kr, kg, kb, t) = if dot dir n < 0
                          then ((-1) * (dot n dir), 1, 1, 1, refract dir n i)
@@ -149,8 +170,8 @@ module RayTracer (render
                            in
                              (c', kr', kg', kb', t')
     
-    r0 = (i - 1) ** 2 / (i + 1) ** 2
-    f = r0 + (1 - r0) * (1 - c) ** 5
+    reflectance = (i - 1) ** 2 / (i + 1) ** 2
+    schlick = reflectance + (1 - reflectance) * (1 - c) ** 5
     color = case t of 
             Nothing -> 
               let
