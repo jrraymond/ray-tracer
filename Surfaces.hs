@@ -21,8 +21,8 @@ module Surfaces
   epsilon :: Float
   epsilon = 0.001
 
-  {- Ambient, Diffuse, Specular, Blinn-Phong, Reflection, Refractive Index, Attenuation -}
-  type Material = (Color, Color, Color, Float, Color, Float, Color)
+  {- Ambient, Diffuse, Specular, Blinn-Phong, Reflection, Refractive Index, Attenuation, Glossiness -}
+  type Material = (Color, Color, Color, Float, Color, Float, Color, Float)
 
   {- Hit records have an intersection point, a normal, and a time -}  
   data HitRec = HitRec !Pt3 !Vec3 !Float !Material deriving (Show, Eq)

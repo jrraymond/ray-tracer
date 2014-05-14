@@ -36,10 +36,10 @@ main = do
 
     colorFin <- checkFile $ optColorF opts
     colorMap <- checkSource $ readColors Map.empty colorFin 
---    print colorMap
+    --print colorMap
     matFin <- checkFile $ optMaterialF opts
     matMap <-  checkSource $ readMaterials colorMap matFin
- --   print matMap
+    --print matMap
     shapeFin <- checkFile $ optShapeF opts
 --    shapeMap <- checkSource $ readShapes matMap shapeFin
     shapeExprMap <- checkSource $ readShapesExpr matMap shapeFin
