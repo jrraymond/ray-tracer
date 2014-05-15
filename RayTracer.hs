@@ -162,7 +162,7 @@ module RayTracer (render
   getRefraction _ _ _ _ 0 _ = (Color 0 0 0)
   getRefraction world (Ray3 (_, dir)) p n i (Color ar ag ab) = color where
     World { reflDepth = depth } = world
-    refl = subt dir $ multiply n (2 * dot dir n)
+    refl = normalize $ subt dir $ multiply n (2 * dot dir n)
     (c, kr, kg, kb, t) = if dot dir n < 0
                          then ((-1) * (dot dir n), 1, 1, 1, refract dir n i)
                          else 
@@ -189,10 +189,6 @@ module RayTracer (render
                 (Color (kr*r) (kg*g) (kb*b))
             Just s -> 
               let
-                {- According to the book, we should have something similar to the former,
-                 - but all this does is causes problems for me. The latter gives something that
-                 - looks relatively nice
-                 -}
                 (Color r g b) = (getScaledColor (rayTrace 3 world [(Ray3 (p, refl))]) (Color 1 1 1) schlick) `mappend`
                     (getScaledColor (rayTrace 3 world [(Ray3 (p, s))]) (Color 1 1 1) (1 - schlick))
               in
@@ -205,9 +201,7 @@ module RayTracer (render
                   then Nothing
                   else Just t where
                       internal_ref = sqrt $ 1 - (i * i * (1 - (dot d n) ** 2))
-                      t = subt (multiply (subt d (multiply n (dot d n))) i) (multiply n internal_ref)
-
-
+                      t = normalize $ subt (multiply (subt d (multiply n (dot d n))) i) (multiply n internal_ref)
 
 
   getHammerslayPoints :: Int -> [(Float,Float,Float)]
