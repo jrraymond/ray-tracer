@@ -211,11 +211,13 @@ module Parser where
                  | TriangleE (Expr,Expr,Expr) (Expr,Expr,Expr) (Expr,Expr,Expr) Material
                  deriving Show
 
-  data OpU = NegOpU | PlusOpU deriving Show
+  data OpU = NegOpU | PlusOpU | SinOpU | CosOpU deriving Show
   data OpB = PlusOpB | ProdOpB | MinusOpB | DivOpB  | PowOpB deriving Show
   evalOpU :: OpU -> (Float -> Float)
   evalOpU NegOpU = negate
   evalOpU PlusOpU = id
+  evalOpU SinOpU = sin
+  evalOpU CosOpU = cos
   evalOpB :: OpB -> (Float -> Float -> Float)
   evalOpB PlusOpB = (+)
   evalOpB MinusOpB = (-)
@@ -249,6 +251,8 @@ module Parser where
   table :: forall s u (m :: * -> *). Stream s m Char => [[Operator s u m Expr]]
   table = [ [ Prefix (char '+' >> return (UnaryNode PlusOpU))
             , Prefix (char '-' >> return (UnaryNode NegOpU))
+            , Prefix (string "sin" >> return (UnaryNode SinOpU))
+            , Prefix (string "cos" >> return (UnaryNode CosOpU))
             ]
           , [ Infix (char '*' >> return (BinaryNode ProdOpB)) AssocLeft
             , Infix (char '/' >> return (BinaryNode DivOpB)) AssocLeft 
