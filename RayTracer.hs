@@ -88,9 +88,7 @@ module RayTracer (render
           , softshadows = shdwRays
           } = world
     refr = getRefraction world ray p n i rf
-    refl = if r == mempty
-           then mempty
-           else (getScaledColor r (getReflection world ray p n g depth) 1)
+    refl = getScaledColor r (getReflection world ray p n g depth) 1
     diff_phong = mconcat $ map (getDiffuseAndPhong shdwRays ray m n p bbTree') lights'
     amb = getScaledColor a ambient' 1
     color = diff_phong `mappend` amb `mappend` refl `mappend` refr
@@ -136,8 +134,13 @@ module RayTracer (render
     {- Create a not so random seed -}
     seed1 = floor $ 100 * (g * g * dot dir n)
     seed2 = seed1 * 2
-    coords = zip (take 32 $ randomRs (-g/2, g/2) (mkStdGen seed1)) 
-        (take 32 $ randomRs (-g/2, g/2) (mkStdGen seed2))
+
+    {- If you want smoother gloss, increase this number.
+     - Note: This has exponential increase in complexity.
+     -}
+    num_rays = 1
+    coords = zip (take num_rays $ randomRs (-g/2, g/2) (mkStdGen seed1)) 
+        (take num_rays $ randomRs (-g/2, g/2) (mkStdGen seed2))
     
     rays = map (getRefRay dir p n g) coords
 
@@ -168,7 +171,7 @@ module RayTracer (render
                            let
                              t' = refract dir (multiply n (-1)) (1/i)
                              --w = magnitude $ subt e p
-                             kr' = exp(-1 * log(ar)) -- These should involve an exponential
+                             kr' = exp(-1 * log(ar))
                              kg' = exp(-1 * log(ag))
                              kb' = exp(-1 * log(ab))
                              c' = case t' of

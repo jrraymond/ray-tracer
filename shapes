@@ -1,9 +1,10 @@
 Sphere s1 = (3 1*t 5) 2 mat_gloss
 Sphere s2 = (4 5 2) 0.75 mat_gloss
-Sphere s3 = (5 0.5 4) 0.25 mat_glass
-Sphere s4 = (13 10 3) 2 mat_glass 
-Sphere s5 = (5 2 5) 3 mat_gloss
+Sphere s3 = (5 0.5 4) 0.25 mat_gloss
+Sphere s4 = (13 10 3) 2 mat_gloss
+Sphere s5 = (5 2 5) 3 mat_emerald
 Triangle t1 = (-10 -1 -10) (10 -1 -10) (-10 5 -10) mat_yellow_tri
 Triangle t2 = (-10  5 -10) (10 -1 -10) (10 5 -10) mat_yellow_tri
 Triangle t3 = (-10 -1 -10) (-10 5 -10) (-10 5 10) mat_yellow_tri
 Triangle t4 = (-10 -1 -10) (-10 5 10) (-10 -1 10) mat_yellow_tri
+Plane p1 = (-40 -1 2) (2 -1 2) (2 -1 -20) mat_plane
