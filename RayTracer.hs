@@ -38,7 +38,7 @@ module RayTracer (render
     f = rayTrace refldepth world . getRays world
     pixels = [ (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
     (wd,ht) = imgDim world
-    ps' = map (rayTrace refldepth world . getRays world) pixels `using` parListChunk 500 rseq
+    ps' = map f pixels `using` parListChunk 500 rseq
   flatten :: [Color] -> [Float]
   flatten [] = []
   flatten (Color x y z:xs) = x:y:z:flatten xs
@@ -128,15 +128,21 @@ module RayTracer (render
     Color (mr * lr * s) (mg * lg * s) (mb * lb * s)
 
   getReflection :: World -> Ray3 -> Pt3 -> Vec3 -> Float -> Int -> Color
-  getReflection world (Ray3 (_, dir)) p n g depth = color where
-    refRay@(Ray3 (_, refdir)) = getReflectionRay dir p n g 
-    color = if dot n refdir < 0.0
-            then Color 0 0 0
-            else rayTrace (depth - 1) world [refRay]
+  getReflection world (Ray3 (_, dir)) p n 0 depth = rayTrace (depth - 1) world [Ray3 (p, normalize $ subt dir $ multiply n (2 * dot dir n))]
+  getReflection world (Ray3 (_, dir)) p n g depth = rayTrace (depth - 1) world $ getReflectionRays dir p n g
 
-  getReflectionRay :: Vec3 -> Pt3 -> Vec3 -> Float -> Ray3
-  getReflectionRay dir p n 0 = Ray3 (p, normalize $ subt dir $ multiply n (2 * dot dir n))
-  getReflectionRay dir p n g = ray where
+  getReflectionRays :: Vec3 -> Pt3 -> Vec3 -> Float -> [Ray3]
+  getReflectionRays dir p n g = rays where
+    {- Create a not so random seed -}
+    seed1 = floor $ 100 * (g * g * dot dir n)
+    seed2 = seed1 * 2
+    coords = zip (take 32 $ randomRs (-g/2, g/2) (mkStdGen seed1)) 
+        (take 32 $ randomRs (-g/2, g/2) (mkStdGen seed2))
+    
+    rays = map (getRefRay dir p n g) coords
+
+  getRefRay :: Vec3 -> Pt3 -> Vec3 -> Float -> (Float, Float) -> Ray3
+  getRefRay dir p n g (xi, xi') = ray where
     r@(rx, ry, rz) = normalize $ subt dir $ multiply n (2 * dot dir n)
     t = if abs rx < abs ry && abs rx < abs rz
         then (1, ry, rz)
@@ -145,10 +151,6 @@ module RayTracer (render
         else (rx, ry, 1)
     u = normalize $ cross t r
     v = cross r u
-
-    {- Create a not so random seed -}
-    seed = floor $ 100 * ((magnitude2 $ multiply n (magnitude $ cross v t)) + rx + ry + rz)
-    xi : xi' : [] = take 2 $ randomRs (-g/2, g/2) (mkStdGen seed)
 
     u' = -g / 2 + xi * g
     v' = -g / 2 + xi' * g
