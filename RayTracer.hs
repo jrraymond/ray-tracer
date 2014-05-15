@@ -75,7 +75,7 @@ module RayTracer (render
     --dirs = getDir viewWd viewHt viewDist imgWd imgHt u v w (i,j)
 
   getDir :: Float -> Float -> Float -> Float -> Float -> Vec3 -> Vec3 -> Vec3 -> (Float,Float) -> Vec3
-  getDir vW vH vD iW iH u v w (i,j) = add w_dir $ add u_dir v_dir where
+  getDir vW vH vD iW iH u v w (i,j) = normalize $ add w_dir $ add u_dir v_dir where
     u_dir = multiply u ((i + 0.5) * vW / iW - vW / 2)
     v_dir = multiply v ((j + 0.5) * vH / iH - vH / 2)
     w_dir = multiply w (-1 * vD)
@@ -164,7 +164,7 @@ module RayTracer (render
     World { reflDepth = depth } = world
     refl = subt dir $ multiply n (2 * dot dir n)
     (c, kr, kg, kb, t) = if dot dir n < 0
-                         then ((-1) * (dot n dir), 1, 1, 1, refract dir n i)
+                         then ((-1) * (dot dir n), 1, 1, 1, refract dir n i)
                          else 
                            let
                              t' = refract dir (multiply n (-1)) (1/i)
@@ -173,7 +173,7 @@ module RayTracer (render
                              kg' = exp(-1 * log(ag))
                              kb' = exp(-1 * log(ab))
                              c' = case t' of
-                                  Nothing -> 1
+                                  Nothing -> 0
                                   Just s -> dot s n
                            in
                              (c', kr', kg', kb', t')
@@ -193,9 +193,8 @@ module RayTracer (render
                  - but all this does is causes problems for me. The latter gives something that
                  - looks relatively nice
                  -}
-                --(Color r g b) = (getScaledColor (rayTrace 3 world [(Ray3 (p, refl))]) (Color 1 1 1) f) `mappend`
-                --    (getScaledColor (rayTrace 3 world [(Ray3 (p, s))]) (Color 1 1 1) (1 - f))
-                (Color r g b) = rayTrace depth world [(Ray3 (p, refl))] `mappend` rayTrace depth world [(Ray3 (p, s))]
+                (Color r g b) = (getScaledColor (rayTrace 3 world [(Ray3 (p, refl))]) (Color 1 1 1) schlick) `mappend`
+                    (getScaledColor (rayTrace 3 world [(Ray3 (p, s))]) (Color 1 1 1) (1 - schlick))
               in
                 (Color (kr*r) (kg*g) (kb*b))
 
