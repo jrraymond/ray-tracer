@@ -18,6 +18,7 @@ import Data.Maybe
 import Parser
 import Data.Map (Map)
 import qualified Data.Map as Map
+import System.Random
 
 
 main :: IO ()
@@ -34,6 +35,7 @@ main = do
         ss = fromMaybe 1 (optSoftShadows opts)
         rd = fromMaybe 2 (optReflDepth opts)
         frames = fromIntegral (fromMaybe 1 (optFrames opts))
+        rng = mkStdGen $ fromIntegral (fromMaybe 356 (optFrames opts))
   
 
     colorFin <- checkFile $ optColorF opts
@@ -73,7 +75,7 @@ main = do
     --writePPM "output.ppm" iwd iht $ invertY iwd iht pixels
     let go :: Float -> IO ()
         go i | i > 0 = do !(planes',shapes') <- return (partition isPlane (getShapesNow i shapesExpr))
-                          !world <- return $ World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd
+                          !world <- return $ World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd rng
                           !pixels' <- return $ invertY iwd iht (render world)
                           putStrLn $ "Writing frame " ++ show i
                           writePPM ("img/output" ++ show i ++ ".ppm") iwd iht pixels'
@@ -128,6 +130,7 @@ data Options = Options
   , optSoftShadows :: Maybe Int
   , optReflDepth :: Maybe Int
   , optFrames :: Maybe Int
+  , optSeed :: Maybe Int
   } deriving Show
 
 defaultOptions :: Options
@@ -141,6 +144,7 @@ defaultOptions = Options
   , optSoftShadows = Just 0
   , optReflDepth = Just 2
   , optFrames = Just 1
+  , optSeed = Just 356
   }
 
 options :: [OptDescr (Options -> Options)]
@@ -154,6 +158,7 @@ options =
     , Option [] ["softshadows"] (ReqArg (\s opts -> opts { optSoftShadows = readInt s }) "0") "shoftshadow level"
     , Option [] ["reflectiondepth"] (ReqArg (\d opts -> opts { optReflDepth = readInt d}) "2") "reflection depth"
     , Option ['f'] ["frames"] (ReqArg (\f opts -> opts { optFrames = readInt f}) "1") "frames"
+    , Option [] ["seed"] (ReqArg (\s opts -> opts { optSeed = readInt s}) "356") "seed"
     ]
 
 readInt :: String -> Maybe Int

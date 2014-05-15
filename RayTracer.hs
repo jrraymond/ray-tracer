@@ -27,6 +27,7 @@ module RayTracer (render
                      , antialiasing :: Int
                      , softshadows :: Int
                      , reflDepth :: Int
+                     , rng :: StdGen
                      }
 
   mapT :: (a -> b) -> (a,a) -> (b,b)
@@ -127,20 +128,17 @@ module RayTracer (render
 
   getReflection :: World -> Ray3 -> Pt3 -> Vec3 -> Float -> Int -> Color
   getReflection world (Ray3 (_, dir)) p n 0 depth = rayTrace (depth - 1) world [Ray3 (p, normalize $ subt dir $ multiply n (2 * dot dir n))]
-  getReflection world (Ray3 (_, dir)) p n g depth = rayTrace (depth - 1) world $ getReflectionRays dir p n g
+  getReflection world (Ray3 (_, dir)) p n g depth = rayTrace (depth - 1) world $ getReflectionRays world dir p n g
 
-  getReflectionRays :: Vec3 -> Pt3 -> Vec3 -> Float -> [Ray3]
-  getReflectionRays dir p n g = rays where
-    {- Create a not so random seed -}
-    seed1 = floor $ 100 * (g * g * dot dir n)
-    seed2 = seed1 * 2
-
+  getReflectionRays :: World -> Vec3 -> Pt3 -> Vec3 -> Float -> [Ray3]
+  getReflectionRays world dir p n g = rays where
+    World { rng = prng } = world
     {- If you want smoother gloss, increase this number.
      - Note: This has exponential increase in complexity.
      -}
     num_rays = 1
-    coords = zip (take num_rays $ randomRs (-g/2, g/2) (mkStdGen seed1)) 
-        (take num_rays $ randomRs (-g/2, g/2) (mkStdGen seed2))
+    xs = take (2*num_rays) $ randomRs (-g/2, g/2) (prng)
+    coords = zip (take num_rays xs) (drop num_rays xs)
     
     rays = map (getRefRay dir p n g) coords
 
