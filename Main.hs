@@ -16,6 +16,7 @@ import System.Exit
 import System.Console.GetOpt
 import Data.Maybe
 import Parser
+import Data.Word
 import Data.Map (Map)
 import qualified Data.Map as Map
 
@@ -33,7 +34,7 @@ main = do
         as = fromMaybe 0 (optAntiAliasing opts)
         ss = fromMaybe 1 (optSoftShadows opts)
         rd = fromMaybe 2 (optReflDepth opts)
-        frames = fromIntegral (fromMaybe 1 (optFrames opts))
+        frames = fromMaybe 1 (optFrames opts)
   
 
     colorFin <- checkFile $ optColorF opts
@@ -69,17 +70,22 @@ main = do
     --GLUT.reshapeCallback GLUT.$= Just reshape
     ----let GLUT take over
     --GLUT.mainLoop
-    !shapesExpr <- return $ map snd (Map.toList shapeExprMap)
+    shapesExpr <- return $ map snd (Map.toList shapeExprMap)
     --writePPM "output.ppm" iwd iht $ invertY iwd iht pixels
     let go :: Float -> IO ()
-        go i | i > 0 = do !(planes',shapes') <- return (partition isPlane (getShapesNow i shapesExpr))
-                          !world <- return $ World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd
-                          !pixels' <- return $ invertY iwd iht (render world)
+        go i | i > 0 = do (planes',shapes') <- return (partition isPlane (getShapesNow i shapesExpr))
+                          world <- return $ World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd
+                          pixels' <- return $ invertY iwd iht (render world)
                           putStrLn $ "Writing frame " ++ show i
-                          writePPM ("output" ++ show i ++ ".ppm") iwd iht pixels'
+                          writePPM ("output" ++ prefix frames i ++ ".ppm") iwd iht pixels'
                           go (i - 1)
              | otherwise   = putStrLn "All done!" >> return () 
-    go frames
+    go (fromIntegral frames)
+
+prefix :: Int -> Float -> String
+prefix f i = pre ++ i' where
+  i' = show i
+  pre = replicate (length (show f) + 2 - length i') '0' 
 
 reshape :: GLUT.ReshapeCallback
 reshape size = GLUT.viewport GLUT.$= (GLUT.Position 0 0, size)

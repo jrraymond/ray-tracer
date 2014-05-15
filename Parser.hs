@@ -9,7 +9,7 @@ module Parser where
   import System.Exit
   import Text.Parsec hiding (runParser)
   import Text.Parsec.Expr
-  import Text.ParserCombinators.Parsec
+  import Text.ParserCombinators.Parsec hiding (try)
   import Data.Map (Map)
   import qualified Data.Map as Map
   import Surfaces
@@ -18,9 +18,11 @@ module Parser where
   eol = do oneOf "\n\r"
            return ()
         <?> "end of line"
+
   comment :: Parser ()
   comment = do char '#'
                skipMany (noneOf "\r\n") <?> "comment"
+
   floats = many float
   --ident :: Parser String
   ident = do skipMany space
@@ -272,6 +274,79 @@ module Parser where
 
   expr :: forall s u (m :: * -> *). Stream s m Char => ParsecT s u m Expr
   expr = buildExpressionParser table term
+
+  {- Parser 2.0 
+  - Formal description of expression language:
+  - Expression := Expression [+-] Term |  Term
+  - Term := Term [*/] Factor | Factor
+  - Factor := (Expression) | Float
+  -}
+  {- Arithmetic operations -}
+  data Operator' = PlusOp' | MinusOp' | MultOp' | DivOp' | NegOp' | SinOp' | CosOp' deriving (Show, Eq)
+
+  {- Parse Tree for the expression lanuage 2.0 -}
+  data ParseTree = UnaryNode' Operator' ParseTree
+                 | BinaryNode' Operator' ParseTree ParseTree
+                 | NumNode' Float
+                 | VarNodeT'
+                 | Lparens
+                 | Rparens
+                 deriving Show
+  {- The following parsers parse an expression into a list of tokens -}
+  data Token = TokOp Operator' | TokLParen | TokRParen | TokNum Float | TokVarT | TokEnd deriving (Show, Eq)
+  token' :: forall s u (m :: * -> *). Stream s m Char => ParsecT s u m Token
+  token' = (char '(' >> return TokLParen) <|>
+           (char ')' >> return TokRParen) <|>
+           try (float >>= \f -> return $ TokNum f) <|>
+           (char 't' >> return TokVarT) <|>
+           (char '*' >> return (TokOp MultOp')) <|>
+           (char '/' >> return (TokOp DivOp')) <|>
+           (char '+' >> return (TokOp PlusOp')) <|>
+           (char '-' >> return (TokOp MinusOp')) <|>
+           (string "sin" >> return (TokOp SinOp')) <|>
+           (string "cos" >> return (TokOp CosOp')) <?> "operator"
+  tokenize' :: forall s u (m :: * -> *). Stream s m Char => ParsecT s u m [Token]
+  tokenize' = many token'
+  {- Now we parse the tokens into an AST -}
+  expression :: [Token] -> (ParseTree, [Token])
+  expression ts = let (termTree, ts') = term' ts in
+    case head ts' of
+       (TokOp op) | op == PlusOp' || op == MinusOp' -> 
+          let (exTree, ts'') = expression (tail ts') 
+          in (BinaryNode' op termTree exTree, ts'')
+       _ -> (termTree, ts')
+
+  term' :: [Token] -> (ParseTree, [Token])
+  term' ts = let (facTree, ts') = factor ts in
+    case head ts' of
+       (TokOp op) | op == MultOp' || op == DivOp' ->
+          let (termTree, ts'') = term' (tail ts') 
+          in (BinaryNode' op facTree termTree, ts'')
+       _ -> (facTree, ts')
+
+  factor :: [Token] -> (ParseTree, [Token])
+  factor ts = 
+     case head ts of
+        (TokNum x) -> (NumNode' x, tail ts)
+        (TokVarT) -> (VarNodeT', tail ts)
+        (TokOp op) | elem op [PlusOp', MinusOp'] -> 
+              let (facTree, ts') = factor (tail ts) 
+              in (UnaryNode' op facTree, ts')
+        TokLParen      -> 
+           let (expTree, ts') = expression (tail ts)
+           in
+              if head ts' /= TokRParen 
+              then error "Expecting right parens"
+              else (expTree, tail ts')
+        _ -> error $ "Parse error on token: " ++ show ts
+
+  parse' :: [Token] -> ParseTree
+  parse' ts = let (tree, ts') = expression ts
+               in
+                 if null ts' 
+                 then tree
+                 else error $ "Leftover tokens: " ++ show ts'
+
 
 
   readShapes :: Map String Material -> String -> Either ParseError (Map String Shape)
