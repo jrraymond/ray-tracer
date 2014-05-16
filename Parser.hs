@@ -60,7 +60,10 @@ module Parser where
   {- we need a function that parses a float in reverse for our expression
   - language -}
   revFloat  :: Stream s m Char => ParsecT s u m Float
-  revFloat = many1 "0123456789.-" >>= \s -> return float s
+  revFloat = do ds <- many1 anyToken
+                case parse float "" (reverse ds) of
+                    Left err -> parserFail $ show err
+                    Right e' -> return e'
 
   {- Parser to read identifier and check if is in the identifier map -}
   identify :: Stream s m Char => ParsecT s (Map String a) m a
@@ -215,8 +218,8 @@ module Parser where
   {- To parse the expressions with left to right associativity, we assume
   - the input stream is in reverse order.
   -
-  - TODO: There is a chainl function in the parsec library that returns a
-  - value obtained by a left associativ application
+  - TODO: There is a chainl1 function in the parsec library that returns a
+  - value obtained by a left associative application.
   -}
   expression :: Stream s m Char => ParsecT s u m Expr
   expression = do e <- many (noneOf " {}")
