@@ -41,14 +41,14 @@ main = do
 
     colorFin <- checkFile $ optColorF opts
     colorMap <- checkSource $ readColors Map.empty colorFin 
-    --print colorMap
+    print colorMap
     matFin <- checkFile $ optMaterialF opts
     matMap <-  checkSource $ readMaterials colorMap matFin
-    --print matMap
+    print matMap
     shapeFin <- checkFile $ optShapeF opts
 --    shapeMap <- checkSource $ readShapes matMap shapeFin
     shapeExprMap <- checkSource $ readShapesExpr matMap shapeFin
-    --print (getShapesNow 0 (Map.toList shapeExprMap))
+    print (getShapesNow 0 (map snd $ Map.toList shapeExprMap))
 
     --let (planes',shapes') = partition isPlane $ map snd (Map.toList undefined)
     --    world = World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd
