@@ -183,9 +183,9 @@ module RayTracer (render
    - The commented out function does not incorporate glossiness.
    -}
   getReflection :: World -> Ray3 -> Pt3 -> Vec3 -> Float -> Int -> Color
-  --getReflection world (Ray3 (_, dir)) p n g depth = rayTrace (depth - 1) world [Ray3 (p, normalize $ subt dir $ multiply n (2 * dot dir n))]
-  getReflection world (Ray3 (_, dir)) p n 0 depth = rayTrace (depth - 1) world [Ray3 (p, normalize $ subt dir $ multiply n (2 * dot dir n))]
-  getReflection world (Ray3 (_, dir)) p n g depth = rayTrace (depth - 1) world $ getReflectionRays world dir p n g
+  getReflection world (Ray3 (_, dir)) p n g depth = rayTrace (depth - 1) world [Ray3 (p, normalize $ subt dir $ multiply n (2 * dot dir n))]
+  --getReflection world (Ray3 (_, dir)) p n 0 depth = rayTrace (depth - 1) world [Ray3 (p, normalize $ subt dir $ multiply n (2 * dot dir n))]
+  --getReflection world (Ray3 (_, dir)) p n g depth = rayTrace (depth - 1) world $ getReflectionRays world dir p n g
   {-See note below-}
 
   {- This gets a sample of rays to smooth out the glossiness. -}

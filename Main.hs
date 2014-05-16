@@ -20,6 +20,7 @@ import Data.Word
 import Data.Map (Map)
 import qualified Data.Map as Map
 import System.Random
+import System.Cmd
 
 
 main :: IO ()
@@ -108,6 +109,7 @@ main = do
                           go (i - 1)
              | otherwise   = putStrLn "All done!" >> return () 
     go (fromIntegral frames)
+    system "convert -delay 25 img/output*.ppm img/output.gif" >> return ()
 
 prefix :: Int -> Float -> String
 prefix f i = pre ++ i' where
