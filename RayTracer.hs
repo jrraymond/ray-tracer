@@ -27,6 +27,7 @@ module RayTracer (render
                      , antialiasing :: Int
                      , softshadows :: Int
                      , reflDepth :: Int
+                     , rng :: StdGen
                      }
 
   mapT :: (a -> b) -> (a,a) -> (b,b)
@@ -38,7 +39,7 @@ module RayTracer (render
     f = rayTrace refldepth world . getRays world
     pixels = [ (x,y) | y <- [0..(ht-1)], x <- [0..(wd-1)] ]
     (wd,ht) = imgDim world
-    ps' = map (rayTrace refldepth world . getRays world) pixels `using` parListChunk 500 rseq
+    ps' = map f pixels `using` parListChunk 500 rseq
   flatten :: [Color] -> [Float]
   flatten [] = []
   flatten (Color x y z:xs) = x:y:z:flatten xs
@@ -74,7 +75,7 @@ module RayTracer (render
     --dirs = getDir viewWd viewHt viewDist imgWd imgHt u v w (i,j)
 
   getDir :: Float -> Float -> Float -> Float -> Float -> Vec3 -> Vec3 -> Vec3 -> (Float,Float) -> Vec3
-  getDir vW vH vD iW iH u v w (i,j) = add w_dir $ add u_dir v_dir where
+  getDir vW vH vD iW iH u v w (i,j) = normalize $ add w_dir $ add u_dir v_dir where
     u_dir = multiply u ((i + 0.5) * vW / iW - vW / 2)
     v_dir = multiply v ((j + 0.5) * vH / iH - vH / 2)
     w_dir = multiply w (-1 * vD)
@@ -126,16 +127,25 @@ module RayTracer (render
     Color (mr * lr * s) (mg * lg * s) (mb * lb * s)
 
   getReflection :: World -> Ray3 -> Pt3 -> Vec3 -> Float -> Int -> Color
-  getReflection world (Ray3 (_, dir)) p n g depth = color where
-    refRay@(Ray3 (_, refdir)) = getReflectionRay dir p n g 
-    color = if dot n refdir < 0.0
-            then Color 0 0 0
-            else rayTrace (depth - 1) world [refRay]
+  getReflection world (Ray3 (_, dir)) p n g depth = rayTrace (depth - 1) world [Ray3 (p, normalize $ subt dir $ multiply n (2 * dot dir n))]
+  --getReflection world (Ray3 (_, dir)) p n g depth = rayTrace (depth - 1) world $ getReflectionRays world dir p n g
+  {-See note below-}
 
-  getReflectionRay :: Vec3 -> Pt3 -> Vec3 -> Float -> Ray3
-  getReflectionRay dir p n 0 = Ray3 (p, normalize $ subt dir $ multiply n (2 * dot dir n))
-  getReflectionRay dir p n g = ray where
-    gloss = 1 / g
+  getReflectionRays :: World -> Vec3 -> Pt3 -> Vec3 -> Float -> [Ray3]
+  getReflectionRays world dir p n g = rays where
+    World { rng = prng } = world
+    {- If you want smoother gloss, increase this number.
+     - There is an issue with calculating the jittered ray.
+     - It sometimes goes under the surface which will cause problems (infinite loops).
+     -}
+    num_rays = 1
+    xs = take (2*num_rays) $ randomRs (-g/2, g/2) (prng)
+    coords = zip (take num_rays xs) (drop num_rays xs)
+    
+    rays = map (getRefRay dir p n g) coords
+
+  getRefRay :: Vec3 -> Pt3 -> Vec3 -> Float -> (Float, Float) -> Ray3
+  getRefRay dir p n g (xi, xi') = ray where
     r@(rx, ry, rz) = normalize $ subt dir $ multiply n (2 * dot dir n)
     t = if abs rx < abs ry && abs rx < abs rz
         then (1, ry, rz)
@@ -145,29 +155,27 @@ module RayTracer (render
     u = normalize $ cross t r
     v = cross r u
 
-    seed = floor $ 100 * ((magnitude2 $ multiply n (magnitude $ cross v t)) + rx + ry + rz)
-    xi : xi' : [] = take 2 $ randomRs (-gloss/2, gloss/2) (mkStdGen seed)
-
-    u' = -gloss / 2 + xi * gloss
-    v' = -gloss / 2 + xi' * gloss
+    u' = -g / 2 + xi * g
+    v' = -g / 2 + xi' * g
     ray = Ray3 (p, normalize $ add r $ add (multiply u u') (multiply v v'))
 
   {- TODO: fix the kr, kg, kg constants. Figure out what non-vector t is exactly -}
   getRefraction :: World -> Ray3 -> Pt3 -> Vec3 -> Float -> Color -> Color
   getRefraction _ _ _ _ 0 _ = (Color 0 0 0)
   getRefraction world (Ray3 (_, dir)) p n i (Color ar ag ab) = color where
-    refl = subt dir $ multiply n (2 * dot dir n)
+    World { reflDepth = depth } = world
+    refl = normalize $ subt dir $ multiply n (2 * dot dir n)
     (c, kr, kg, kb, t) = if dot dir n < 0
-                         then ((-1) * (dot n dir), 1, 1, 1, refract dir n i)
+                         then ((-1) * (dot dir n), 1, 1, 1, refract dir n i)
                          else 
                            let
                              t' = refract dir (multiply n (-1)) (1/i)
                              --w = magnitude $ subt e p
-                             kr' = exp(-1 * log(ar)) -- These should involve an exponential
+                             kr' = exp(-1 * log(ar))
                              kg' = exp(-1 * log(ag))
                              kb' = exp(-1 * log(ab))
                              c' = case t' of
-                                  Nothing -> 1
+                                  Nothing -> 0
                                   Just s -> dot s n
                            in
                              (c', kr', kg', kb', t')
@@ -177,18 +185,14 @@ module RayTracer (render
     color = case t of 
             Nothing -> 
               let
-                (Color r g b) = rayTrace 3 world [(Ray3 (p, refl))]
+                
+                (Color r g b) = rayTrace depth world [(Ray3 (p, refl))]
               in
                 (Color (kr*r) (kg*g) (kb*b))
             Just s -> 
               let
-                {- According to the book, we should have something similar to the former,
-                 - but all this does is causes problems for me. The latter gives something that
-                 - looks relatively nice
-                 -}
-                --(Color r g b) = (getScaledColor (rayTrace 3 world [(Ray3 (p, refl))]) (Color 1 1 1) f) `mappend`
-                --    (getScaledColor (rayTrace 3 world [(Ray3 (p, s))]) (Color 1 1 1) (1 - f))
-                (Color r g b) = rayTrace 3 world [(Ray3 (p, refl))] `mappend` rayTrace 3 world [(Ray3 (p, s))]
+                (Color r g b) = (getScaledColor (rayTrace 3 world [(Ray3 (p, refl))]) (Color 1 1 1) schlick) `mappend`
+                    (getScaledColor (rayTrace 3 world [(Ray3 (p, s))]) (Color 1 1 1) (1 - schlick))
               in
                 (Color (kr*r) (kg*g) (kb*b))
 
@@ -199,9 +203,7 @@ module RayTracer (render
                   then Nothing
                   else Just t where
                       internal_ref = sqrt $ 1 - (i * i * (1 - (dot d n) ** 2))
-                      t = subt (multiply (subt d (multiply n (dot d n))) i) (multiply n internal_ref)
-
-
+                      t = normalize $ subt (multiply (subt d (multiply n (dot d n))) i) (multiply n internal_ref)
 
 
   getHammerslayPoints :: Int -> [(Float,Float,Float)]

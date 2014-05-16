@@ -19,6 +19,7 @@ import Parser
 import Data.Word
 import Data.Map (Map)
 import qualified Data.Map as Map
+import System.Random
 
 
 main :: IO ()
@@ -35,6 +36,7 @@ main = do
         ss = fromMaybe 1 (optSoftShadows opts)
         rd = fromMaybe 2 (optReflDepth opts)
         frames = fromMaybe 1 (optFrames opts)
+        rng = mkStdGen $ fromIntegral frames
   
 
     colorFin <- checkFile $ optColorF opts
@@ -74,7 +76,7 @@ main = do
     --writePPM "output.ppm" iwd iht $ invertY iwd iht pixels
     let go :: Float -> IO ()
         go i | i > 0 = do (planes',shapes') <- return (partition isPlane (getShapesNow i shapesExpr))
-                          world <- return $ World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd
+                          world <- return $ World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd rng
                           pixels' <- return $ invertY iwd iht (render world)
                           putStrLn $ "Writing frame " ++ show i
                           writePPM ("output" ++ prefix frames i ++ ".ppm") iwd iht pixels'
@@ -134,6 +136,7 @@ data Options = Options
   , optSoftShadows :: Maybe Int
   , optReflDepth :: Maybe Int
   , optFrames :: Maybe Int
+  , optSeed :: Maybe Int
   } deriving Show
 
 defaultOptions :: Options
@@ -147,6 +150,7 @@ defaultOptions = Options
   , optSoftShadows = Just 0
   , optReflDepth = Just 2
   , optFrames = Just 1
+  , optSeed = Just 356
   }
 
 options :: [OptDescr (Options -> Options)]
@@ -160,6 +164,7 @@ options =
     , Option [] ["softshadows"] (ReqArg (\s opts -> opts { optSoftShadows = readInt s }) "0") "shoftshadow level"
     , Option [] ["reflectiondepth"] (ReqArg (\d opts -> opts { optReflDepth = readInt d}) "2") "reflection depth"
     , Option ['f'] ["frames"] (ReqArg (\f opts -> opts { optFrames = readInt f}) "1") "frames"
+    , Option [] ["seed"] (ReqArg (\s opts -> opts { optSeed = readInt s}) "356") "seed"
     ]
 
 readInt :: String -> Maybe Int
@@ -187,7 +192,7 @@ getShapesNow t = map (evalShapeExpr t)
 --eye' = (-4, 4, 7)
 --lookAt' = (8,4,1)
 --up = (0,0,1)
-eye' = (25, 2, 25)
+eye' = (15, 2, 15)
 lookAt' = (-1,-1,-1)
 up = (0,1,0)
 w = normalize $ subt eye' lookAt'
