@@ -105,7 +105,7 @@ main = do
                               world = World (iwd,iht) vpw (u,v,w) eye lookat 4 planes (makeBbt shapes AxisX) lights amb as ss rd rng
                           pixels' <- return $ invertY iwd iht (render world)
                           putStrLn $ "Writing frame " ++ show i
-                          writePPM ("output" ++ prefix frames i ++ ".ppm") iwd iht pixels'
+                          writePPM ("img/output" ++ prefix frames i ++ ".ppm") iwd iht pixels'
                           go (i - 1)
              | otherwise   = putStrLn "All done!" >> return () 
     go (fromIntegral frames)
