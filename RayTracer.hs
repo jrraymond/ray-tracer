@@ -83,17 +83,17 @@ module RayTracer (render
    - we can send other rays through this point (which we then normalize)
    -}
 
-  --getDir :: Float -> Float -> Float -> Float -> Float -> Vec3 -> Vec3 -> Vec3 -> (Float,Float) -> Vec3
-  --getDir vW vH vD iW iH u v w (i,j) = add w_dir $ add u_dir v_dir where
-  --  u_dir = multiply u ((i + 0.5) * vW / iW - vW / 2)
-  --  v_dir = multiply v ((j + 0.5) * vH / iH - vH / 2)
-  --  w_dir = multiply w (-1 * vD)
-
   getDir :: Float -> Float -> Float -> Float -> Float -> Pt3 -> Vec3 -> Vec3 -> Vec3 -> (Float,Float) -> Vec3
-  getDir vW vH vD iW iH e u v w (i,j) = subt (add w_dir $ add u_dir v_dir) e where
+  getDir vW vH vD iW iH e u v w (i,j) = add w_dir $ add u_dir v_dir where
     u_dir = multiply u ((i + 0.5) * vW / iW - vW / 2)
     v_dir = multiply v ((j + 0.5) * vH / iH - vH / 2)
     w_dir = multiply w (-1 * vD)
+
+  --getDir :: Float -> Float -> Float -> Float -> Float -> Pt3 -> Vec3 -> Vec3 -> Vec3 -> (Float,Float) -> Vec3
+  --getDir vW vH vD iW iH e u v w (i,j) = subt (add w_dir $ add u_dir v_dir) e where
+  --  u_dir = multiply u ((i + 0.5) * vW / iW - vW / 2)
+  --  v_dir = multiply v ((j + 0.5) * vH / iH - vH / 2)
+  --  w_dir = multiply w (-1 * vD)
 
   {- Depth of field works by jittering the base of the eye point (for each pixel)
    - and sending all those rays through the same point on 
@@ -108,10 +108,10 @@ module RayTracer (render
    -}
   getDOF :: StdGen -> Int -> Float -> Vec3 -> Vec3 -> Ray3 -> [Ray3]
   getDOF rng samples radius u v (Ray3 (e, dir)) = rays where
-    -- [Ray3 (e, normalize dir)]
-    p = add e dir 
-    (ls, rs) = splitAt samples $ take (2*samples) $ randomRs (-radius, radius) rng
-    rays = map (getDOFRays e p u v) (zip ls rs)
+    rays = [(Ray3 (e, normalize dir))]
+    --p = add e dir 
+    --(ls, rs) = splitAt samples $ take (2*samples) $ randomRs (-radius, radius) rng
+    --rays = map (getDOFRays e p u v) (zip ls rs)
 
   getDOFRays :: Pt3 -> Pt3 -> Vec3 -> Vec3 -> (Float, Float) -> Ray3
   getDOFRays e p u v (u', v') = ray where
