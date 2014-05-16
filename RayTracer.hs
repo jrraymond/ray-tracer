@@ -127,8 +127,9 @@ module RayTracer (render
     Color (mr * lr * s) (mg * lg * s) (mb * lb * s)
 
   getReflection :: World -> Ray3 -> Pt3 -> Vec3 -> Float -> Int -> Color
-  getReflection world (Ray3 (_, dir)) p n g depth = rayTrace (depth - 1) world [Ray3 (p, normalize $ subt dir $ multiply n (2 * dot dir n))]
-  --getReflection world (Ray3 (_, dir)) p n g depth = rayTrace (depth - 1) world $ getReflectionRays world dir p n g
+  --getReflection world (Ray3 (_, dir)) p n g depth = rayTrace (depth - 1) world [Ray3 (p, normalize $ subt dir $ multiply n (2 * dot dir n))]
+  getReflection world (Ray3 (_, dir)) p n 0 depth = rayTrace (depth - 1) world [Ray3 (p, normalize $ subt dir $ multiply n (2 * dot dir n))]
+  getReflection world (Ray3 (_, dir)) p n g depth = rayTrace (depth - 1) world $ getReflectionRays world dir p n g
   {-See note below-}
 
   getReflectionRays :: World -> Vec3 -> Pt3 -> Vec3 -> Float -> [Ray3]
@@ -137,8 +138,9 @@ module RayTracer (render
     {- If you want smoother gloss, increase this number.
      - There is an issue with calculating the jittered ray.
      - It sometimes goes under the surface which will cause problems (infinite loops).
+     - It seems to work fine if you don't make planes glossy
      -}
-    num_rays = 1
+    num_rays = 8
     xs = take (2*num_rays) $ randomRs (-g/2, g/2) (prng)
     coords = zip (take num_rays xs) (drop num_rays xs)
     
@@ -157,7 +159,10 @@ module RayTracer (render
 
     u' = -g / 2 + xi * g
     v' = -g / 2 + xi' * g
-    ray = Ray3 (p, normalize $ add r $ add (multiply u u') (multiply v v'))
+    refdir = normalize $ add r $ add (multiply u u') (multiply v v')
+    ray = if dot refdir n < 0
+          then Ray3 (p, r)
+          else Ray3 (p, normalize $ add r $ add (multiply u u') (multiply v v'))
 
   {- TODO: fix the kr, kg, kg constants. Figure out what non-vector t is exactly -}
   getRefraction :: World -> Ray3 -> Pt3 -> Vec3 -> Float -> Color -> Color

@@ -1,4 +1,4 @@
-Sphere s5 = (5 2 5) 3 mat_emerald
+Sphere s5 = (5 2 5) 3 mat_gloss
 Triangle t1 = (-10 -1 -10) (10 -1 -10) (-10 5 -10) mat_yellow_tri
 Triangle t2 = (-10  5 -10) (10 -1 -10) (10 5 -10) mat_yellow_tri
 Triangle t3 = (-10 -1 -10) (-10 5 -10) (-10 5 10) mat_yellow_tri
