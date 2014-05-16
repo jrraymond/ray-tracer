@@ -39,9 +39,10 @@ main = do
         rng = mkStdGen $ fromIntegral frames
   
 
-    colorFin <- checkFile $ optColorF opts
-    res <- parseScene colorFin
-    print res
+    sceneFile <- checkFile $ optScene opts
+    c <- case parseScene sceneFile of
+           Left err -> putStrLn (show err) >> exitWith (ExitFailure 1)
+           Right r -> return r
     --colorMap <- checkSource $ readColors Map.empty colorFin 
     --print colorMap
     --matFin <- checkFile $ optMaterialF opts
@@ -49,7 +50,7 @@ main = do
     --print matMap
     --shapeFin <- checkFile $ optShapeF opts
 --  --  shapeMap <- checkSource $ readShapes matMap shapeFin
-    shapeExprMap <- undefined --checkSource $ readShapesExpr matMap shapeFin
+    --shapeExprMap <- undefined --checkSource $ readShapesExpr matMap shapeFin
     --print (getShapesNow 0 (map snd $ Map.toList shapeExprMap))
 
     --let (planes',shapes') = partition isPlane $ map snd (Map.toList undefined)
@@ -74,11 +75,33 @@ main = do
     --GLUT.reshapeCallback GLUT.$= Just reshape
     ----let GLUT take over
     --GLUT.mainLoop
-    shapesExpr <- return $ map snd (Map.toList shapeExprMap)
+
+--eye' = (15, 2, 15)
+--lookAt' = (-1, -1, -1)
+--up = (0,1,0)
+--w = normalize $ subt eye' lookAt'
+--u = normalize $ cross up w
+--v = cross w u
+--lts = [ ((50, 20, 0), Color 0.5 0.5 0.5)
+    --, ((3, 2, 20), Color 0.2 0.2 0.2)
+    --]
+--amb = Color 0.1 0.1 0.1
+          
+    --shapesExpr <- return $ map snd (Map.toList shapeExprMap)
     --writePPM "output.ppm" iwd iht $ invertY iwd iht pixels
-    let go :: Float -> IO ()
-        go i | i > 0 = do (planes',shapes') <- return (partition isPlane (getShapesNow i shapesExpr))
-                          world <- return $ World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' 4 shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd rng
+    let vpw = cViewPlane c
+        amb = cAmbient c
+        go :: Float -> IO ()
+        go i | i > 0 = do let eye = evalExprTuple i $ cEye c
+                              lookat = evalExprTuple i $ cLookAt c
+                              up = evalExprTuple i $ cUp c
+                              w = normalize $ subt eye lookat
+                              u = normalize $ cross up w
+                              v = cross w u
+                              planes = map (evalShapeExpr i) $ cPlanes c
+                              shapes = map (evalShapeExpr i) $ cSurfaces c
+                              lights = map (evalLightExpr i) $ cLights c
+                              world = World (iwd,iht) vpw (u,v,w) eye lookat 4 planes (makeBbt shapes AxisX) lights amb as ss rd rng
                           pixels' <- return $ invertY iwd iht (render world)
                           putStrLn $ "Writing frame " ++ show i
                           writePPM ("output" ++ prefix frames i ++ ".ppm") iwd iht pixels'
@@ -126,12 +149,8 @@ usage = "usage raytracer [-win_wd=] [-win_ht=]"
 
 {- Parses the command line arguments -}
 
-
-
 data Options = Options
-  { optColorF :: Either String String
-  , optMaterialF :: Either String String
-  , optShapeF :: Either String String
+  { optScene :: Either String String
   , optImgWd :: Maybe Int
   , optImgHt :: Maybe Int
   , optAntiAliasing :: Maybe Int
@@ -143,9 +162,7 @@ data Options = Options
 
 defaultOptions :: Options
 defaultOptions = Options
-  { optColorF = Left "No color file"
-  , optMaterialF = Left "No material file"
-  , optShapeF = Left "No shape file"
+  { optScene = Left "No Scene File"
   , optImgWd = Just 800
   , optImgHt = Just 600
   , optAntiAliasing = Just 1
@@ -157,9 +174,7 @@ defaultOptions = Options
 
 options :: [OptDescr (Options -> Options)]
 options = 
-    [ Option ['c'] ["colors"] (ReqArg (\x opts -> opts {optColorF = Right x}) "") "Color file"
-    , Option ['m'] ["materials"] (ReqArg (\x opts -> opts { optMaterialF = Right x}) "") "Material file"
-    , Option ['s'] ["shapes"] (ReqArg (\x opts -> opts { optShapeF = Right x}) "") "Shape file"
+    [ Option ['s'] ["scene"] (ReqArg (\x opts -> opts {optScene = Right x}) "") "Scene file"
     , Option ['w'] ["imageWidth"] (ReqArg (\w opts -> opts { optImgWd = readInt w}) "800") "image width in pixels"
     , Option ['h'] ["imageHeight"] (ReqArg (\h opts -> opts { optImgHt = readInt h}) "600") "image height in pixels"
     , Option [] ["antialiasing"] (ReqArg (\a opts -> opts { optAntiAliasing = readInt a}) "1") "antialiasing level"
@@ -176,8 +191,7 @@ parseOpts :: [String] -> (Options, [String])
 parseOpts args =
     case getOpt Permute options args of
       (o,n,[]) -> (foldl (flip id) defaultOptions o, n)
-      (_,_,ers) -> (defaultOptions, [concat ers ++ usageInfo header options])
-      where header = "Usage: ./raytracer -s[--scene] <scene-file> [-w,-h,--antialiasing,--softshadows]"
+      (_,_,ers) -> (defaultOptions, [concat ers ++ usageInfo header options]) where header = "Usage: ./raytracer -s[--scene] <scene-file> [-w,-h,--antialiasing,--softshadows]"
 
 checkFile :: Either String String -> IO String
 checkFile (Left e) = putStrLn e >> exitWith (ExitFailure 1)
@@ -190,18 +204,3 @@ checkSource s = do case s of
 
 getShapesNow :: Float -> [ShapeExpr] -> [Shape]
 getShapesNow t = map (evalShapeExpr t) 
-
---eye' = (-4, 4, 7)
---lookAt' = (8,4,1)
---up = (0,0,1)
-eye' = (15, 2, 15)
-lookAt' = (-1, -1, -1)
-up = (0,1,0)
-w = normalize $ subt eye' lookAt'
-u = normalize $ cross up w
-v = cross w u
-lts = [ ((50, 20, 0), Color 0.5 0.5 0.5)
-    , ((3, 2, 20), Color 0.2 0.2 0.2)
-    ]
-amb = Color 0.1 0.1 0.1
-          

@@ -209,6 +209,3 @@ module Surfaces
                              else ((f - bz) / dz , (n - bz) / dz)
     material = error "material undefined"
 
-  isPlane :: Shape -> Bool
-  isPlane Plane{} = True
-  isPlane _ = False

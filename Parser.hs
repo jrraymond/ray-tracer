@@ -1,18 +1,35 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE BangPatterns #-}
 module Parser where
+  import Debug.Trace (trace)
   import Control.Applicative hiding (many, (<|>))
   import Control.Monad.Identity
   import Text.Parsec hiding (runParser)
   import Text.ParserCombinators.Parsec hiding (try)
+  import qualified Data.List as List
   import Data.Map (Map)
   import Data.Maybe (fromMaybe)
   import qualified Data.Map as Map
   import Surfaces
     
+  {- A record type the scene will be parsed Into -}
+  data Config = Config { cViewPlane :: (Int, Int, Float)
+                      , cEye :: Pt3Expr
+                      , cLookAt :: Pt3Expr
+                      , cUp :: Pt3Expr
+                      , cSurfaces :: [ShapeExpr]
+                      , cPlanes :: [ShapeExpr]
+                      , cLights :: [LightExpr]
+                      , cAmbient :: Color
+                      } 
+                      deriving Show
 
+  {- New types with ASTs for arithmetic expressions with time free in them
+  - -}
+  type Vec3Expr = (Expr,Expr,Expr)
+  type Pt3Expr = Vec3Expr
+  type LightExpr = (Pt3Expr,Color)
   {- A datatype corresponding to our shape datatype with Expressions
   - instead of floats. -}
   data ShapeExpr = SphereE (Expr,Expr,Expr) Expr Material 
@@ -33,7 +50,7 @@ module Parser where
   -     EYE {15  2 15}
   -     LOOKAT { -1 -1 -1}
   -     UP {0 1 0}
-  -     VIEWPLANE 8 6 1
+  -     VIEWPLANE {<width> <height> <dist>} 
   -     AMBIENT Color 0.1 0.1 0.1
   -   END
   -   LIGHTS
@@ -52,19 +69,29 @@ module Parser where
   -   parseScene parses the string into a tuple of the configuration
   -   variables, Lights, and surfaces
   - -}
-  parseScene :: String -> Either String ([(String, String)], 
-                                         [((Expr, Expr, Expr), Color)],
-                                         Map String ShapeExpr)
-  parseScene s = let configs = parse (skipper configOpt "CONFIG" "END") "" s
+  parseScene :: String -> Either String Config
+  parseScene s = let configs = checkConfigVars $ parse (skipper configOpt "CONFIG" "END") "" s
                      colormap = parseMap (skipper color "COLORS" "END") () s 
                      lights = colormap >>= (\cmap -> runParser (skipper light "LIGHTS" "END") cmap "" s)
                      sfcs = colormap >>= (\cmap -> 
                             parseMap (skipper material "MATERIAL" "END") cmap s  >>= (\matmap ->
                             parseMap (skipper shapeExpr "SHAPES" "END") matmap s ))  
-                 in if isLeft configs || isLeft lights || isLeft sfcs  
+                 in if isLeft lights || isLeft sfcs || isLeft configs
                       then Left $ "Failed parsing: " ++ show configs
                                 ++ " " ++ show lights ++ " " ++ show sfcs 
-                      else Right (right configs, right lights, right sfcs)
+                      else Right $ buildConfig (right configs) (right lights) (right sfcs)
+  
+  {- This constructs the config record type from the parsed string -}
+  buildConfig :: (Pt3Expr, Pt3Expr, Vec3Expr, (Float,Float,Float), Color) 
+              -> [LightExpr] 
+              -> Map String ShapeExpr 
+              -> Config
+  buildConfig (eye,lookat,up,(vpw,vph,vpd),amb) lights shapes = 
+    let (planes,sfcs) = List.partition isPlaneExpr $ Map.elems shapes
+    in  Config (floor vpw, floor vph, vpd) eye lookat up sfcs planes lights amb
+
+
+  
 
   configOpt :: ParsecT String () Identity (String, String)
   configOpt = do skipMany space
@@ -72,15 +99,19 @@ module Parser where
                  skipMany space
                  v <- manyTill anyChar eol
                  skipMany space
-                 return (k,v)
+                 return (strip k,strip v)
+
+  skipper :: Stream s m Char => ParsecT s u m a -> String -> String -> ParsecT s u m [a]
   skipper p start end = manyTill anyChar (try (string start)) >> manyTill p (try $ string end)
 
+  optId :: Stream s m Char => ParsecT s u m String
   optId = string "EYE" <|> string "LOOKAT" <||> string "UP"
       <|> string "VIEWPLANE" <|> string "AMBIENT"
 
   eol :: Parser ()
   eol = void $ oneOf "\n\r"
 
+  parseMap :: Ord k => GenParser tok st [(k, a)] -> st -> [tok] -> Either ParseError (Map k a)
   parseMap p m s = case runParser p m "" s of
                           Left err -> Left err
                           Right xs -> Right (Map.fromList xs)
@@ -131,7 +162,7 @@ module Parser where
   {- A parser for a light -}
   light :: GenParser Char (Map String Color) ((Expr,Expr,Expr),Color)
   light = do skipMany space
-             _ <- string "Light"
+             _ <- string "Light" 
              skipMany space
              p <- pointExpr 
              c <- color' <||> identify
@@ -151,7 +182,9 @@ module Parser where
   {- Anonymous color -}
   color' :: Stream s m Char => ParsecT s u m Color
   color' = do _ <- string "Color"
+              skipMany space
               (x,y,z) <- sep3by float (skipMany space)
+              skipMany space
               return (Color x y z)
 
   {- To read all the colors from a stream we parse many colors and collect
@@ -166,8 +199,8 @@ module Parser where
   - materials. Colors in a material may be anonymous colors or a color
   - identifier -}
   material :: GenParser Char (Map String Color) (String,Material)
-  material = do skipMany space
-                _ <- string "Material"
+  material = do skipMany space 
+                _ <- string "Material" 
                 key <- ident
                 _ <- char '='
                 amb <- color' <||> identify
@@ -211,7 +244,14 @@ module Parser where
                  _ <- char '}'
                  skipMany space
                  return xyz
-
+  point :: Stream s m Char => ParsecT s u m (Float, Float, Float)
+  point = do skipMany space
+             _ <- char '{'
+             skipMany space
+             xyz <- sep3by float (skipMany space)
+             _ <- char '}'
+             skipMany space
+             return xyz
 
   sphereExpr :: Stream s m Char => ParsecT s (Map String Material) m (String, ShapeExpr)
   sphereExpr = do _ <- string "Sphere"
@@ -353,6 +393,9 @@ module Parser where
   evalShapeExpr t (SphereE c r mat) = Sphere (evalExprTuple t c) (evalExpr t r) mat
   evalShapeExpr t (TriangleE a b c mat) = Triangle (evalExprTuple t a) (evalExprTuple t b) (evalExprTuple t c) mat
   evalShapeExpr t (PlaneE a b c mat) = Plane (evalExprTuple t a) (evalExprTuple t b) (evalExprTuple t c) mat
+  
+  evalLightExpr :: Float -> LightExpr -> Light
+  evalLightExpr t (p,c) = (evalExprTuple t p, c)
 
   isLeft :: Either a b -> Bool
   isLeft (Left _) = True
@@ -361,4 +404,59 @@ module Parser where
   {- Precondition : Either a b is of the form Right _ -}
   right :: Either a b -> b
   right (Right r) = r
-  right  _ = error "precondition violated"
+  right  _ = error "precondition violated in call for right"
+
+  
+  isPlaneExpr :: ShapeExpr -> Bool
+  isPlaneExpr PlaneE{} = True
+  isPlaneExpr _ = False
+
+  {- Checks if all necessary configuration variables are present in a list
+  - -}
+  checkConfigVars :: Either ParseError [(String,String)] 
+                  -> Either String (Pt3Expr,Pt3Expr,Vec3Expr, (Float,Float,Float),Color)
+  checkConfigVars s =
+      let allP = allPresent s -- I apologive very much for this code, but time is short
+          eye = parse pointExpr "" (lookup' "EYE" (fromEither s [("EYE","")] ))
+          lookat = parse pointExpr "" (lookup' "LOOKAT" (fromEither s [("LOOKAT","")]))
+          up = parse pointExpr "" (lookup' "UP" (fromEither s [("UP","")]))
+          vp = parse point "" (lookup' "VIEWPLANE" (fromEither s [("VIEWPLANE","")]))
+          amb = parse color' "" (lookup' "AMBIENT" (fromEither s [("AMBIENT","")]))
+      in
+        if not allP || trace (show eye) (isLeft eye) || trace (show lookat) (isLeft lookat)
+          || trace (show up) (isLeft up) || trace (show vp) (isLeft vp) || trace (show amb) (isLeft amb)
+          then Left "not all config vars present"
+          else Right (right eye,right lookat,right up,right vp,right amb)
+
+
+  allPresent :: Either ParseError [(String,String)] -> Bool
+  allPresent s 
+    | trace (show s) False = undefined
+    | otherwise =
+    case s of
+      Left _ -> False
+      Right xs -> let vars = ["EYE","LOOKAT","UP","VIEWPLANE","AMBIENT"]
+                      xs' = fst $ unzip xs
+                  in length (vars `List.intersect` xs') == length vars
+    
+  {- Precondition x is in ys -}
+  lookup' :: String -> [(String,String)] -> String
+  lookup' _ [] = error "precondition violated in lookup"
+  lookup' x ((y,v):ys) | x == y = v | otherwise = lookup' x ys
+  
+  fromEither :: Either a b -> b -> b
+  fromEither (Left _) s = s
+  fromEither (Right v) _ = v
+  
+  {- Removing whitespace -}
+  strip :: String -> String
+  strip = lstrip . rstrip
+
+  lstrip :: String -> String
+  lstrip [] = []
+  lstrip (x:xs) 
+    | x `elem` " \n\r\t" = lstrip xs 
+    | otherwise = x:xs
+
+  rstrip :: String -> String
+  rstrip = reverse . lstrip . reverse

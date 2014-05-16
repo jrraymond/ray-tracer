@@ -1,0 +1,54 @@
+CONFIG
+  EYE {15 2 15}
+  LOOKAT {-1 -1 -1}
+  UP {0 1 0}
+  VIEWPLANE {8 6 4}
+  AMBIENT Color 0.1 0.1 0.1
+END
+
+LIGHTS
+  Light  {50 20 0} light1
+  Light  {3 2 20} light2
+END
+
+COLORS
+  Color light1 = 0.5 0.5 0.5
+  Color light2 = 0.2 0.2 0.2
+  Color  purple = 0.5 0.2 0.5
+  Color  blue = 0.2343 0.625 0.8125
+  Color  white = 1.0 1.0 1.0
+  Color  black = 0.0 0.0 0.0
+  Color  grey = 0.6 0.6 0.6
+  Color  grey2 = 0.4 0.4 0.4
+  Color  red = 1.0 0.0 0.0 
+  Color  green = 0.8 0.8 0.2
+  Color  yellow = 1 0.8 0.4
+  Color  emerald = 0.2 1 0.1
+  Color  turquoise = 0.1 0.7 0.7
+END
+
+MATERIAL
+  Material  mat_plane    = blue blue black 10.0 grey 0.0 turquoise 0
+  Material  mat_sphere   = purple purple white 100.0  grey 0.0  black 0.0
+  Material  btriangle = black  black  grey2  100.0  white  0.0  white 0.0
+  Material  rtriangle = red  red  grey  100.0  white  0.0  white 0.0
+  Material  mat_white_tri = white  white  grey2 10.0 black 0.0  black 0.0
+  Material  mat_yellow_tri = yellow yellow yellow 10.0 black 0.0 black 0.0
+  Material  mat_glass    = purple purple white 1000.0 white  1.5  green 0.0
+  Material  mat_gloss = purple purple white 1000.0 grey 0.0 grey 0.2
+  Material  mat_emerald = emerald emerald grey 1.0 grey 1.2 turquoise 0
+END
+
+SHAPES
+  Sphere s1 = {5*sint 1 5*cost} 2 mat_gloss
+  Sphere s2 = {4 5 2} 0.75 mat_sphere
+  Sphere s3 = {5 0.5 4} 0.25 mat_glass
+  Sphere s4 = {13 10 3} 2 mat_glass 
+  Sphere s5 = {5 2 5} 3 mat_emerald
+  Triangle t1 = {-10 -1 -10} {10 -1 -10} {-10 5 -10} mat_yellow_tri
+  Triangle t2 = {-10  5 -10} {10 -1 -10} {10 5 -10} mat_yellow_tri
+  Triangle t3 = {-10 -1 -10} {-10 5 -10} {-10 5 10} mat_yellow_tri
+  Triangle t4 = {-10 -1 -10} {-10 5 10} {-10 -1 10} mat_yellow_tri
+END
+
+DONE

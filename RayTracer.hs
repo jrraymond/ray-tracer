@@ -20,7 +20,6 @@ module RayTracer (render
                      , eye :: Pt3
                      , lookAt :: Pt3
                      , focus :: Float
-                     , surfaces :: [Shape]
                      , planes :: [Shape]
                      , bbTree :: Surfaces
                      , lights :: [Light]
