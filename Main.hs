@@ -19,6 +19,7 @@ import Parser
 import Data.Map (Map)
 import qualified Data.Map as Map
 import System.Random
+import System.Cmd
 
 
 main :: IO ()
@@ -82,6 +83,8 @@ main = do
                           go (i - 1)
              | otherwise   = putStrLn "All done!" >> return () 
     go frames
+    system "convert -delay 25 img/output*.ppm img/output.gif" >> return ()
+    
 
 reshape :: GLUT.ReshapeCallback
 reshape size = GLUT.viewport GLUT.$= (GLUT.Position 0 0, size)
