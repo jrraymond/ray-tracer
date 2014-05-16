@@ -5,6 +5,7 @@
 -}
 {-# LANGUAGE BangPatterns #-}
 import Foreign
+import Debug.Trace (trace)
 import qualified Graphics.UI.GLUT as GLUT
 import qualified Graphics.Rendering.OpenGL as GL
 import Graphics.Rendering.OpenGL.GL.PixelRectangles.Rasterization
@@ -77,16 +78,6 @@ main = do
     ----let GLUT take over
     --GLUT.mainLoop
 
---eye' = (15, 2, 15)
---lookAt' = (-1, -1, -1)
---up = (0,1,0)
---w = normalize $ subt eye' lookAt'
---u = normalize $ cross up w
---v = cross w u
---lts = [ ((50, 20, 0), Color 0.5 0.5 0.5)
-    --, ((3, 2, 20), Color 0.2 0.2 0.2)
-    --]
---amb = Color 0.1 0.1 0.1
           
     --shapesExpr <- return $ map snd (Map.toList shapeExprMap)
     --writePPM "output.ppm" iwd iht $ invertY iwd iht pixels
@@ -100,12 +91,12 @@ main = do
                               u = normalize $ cross up w
                               v = cross w u
                               planes = map (evalShapeExpr i) $ cPlanes c
-                              shapes = map (evalShapeExpr i) $ cSurfaces c
+                              shapes = if trace (show $ cSurfaces c) False then undefined else map (evalShapeExpr i) $ cSurfaces c
                               lights = map (evalLightExpr i) $ cLights c
                               world = World (iwd,iht) vpw (u,v,w) eye lookat 4 planes (makeBbt shapes AxisX) lights amb as ss rd rng
                           pixels' <- return $ invertY iwd iht (render world)
                           putStrLn $ "Writing frame " ++ show i
-                          writePPM ("output" ++ prefix frames i ++ ".ppm") iwd iht pixels'
+                          writePPM ("img/output" ++ prefix frames i ++ ".ppm") iwd iht pixels'
                           go (i - 1)
              | otherwise   = putStrLn "All done!" >> return () 
     go (fromIntegral frames)

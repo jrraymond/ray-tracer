@@ -145,7 +145,7 @@ module Parser where
   {- we need a function that parses a float in reverse for our expression
   - language -}
   revFloat  :: Stream s m Char => ParsecT s u m Float
-  revFloat = do ds <- many1 anyToken
+  revFloat = do ds <- many1 (noneOf " {}+-/*()t")
                 case parse float "" (reverse ds) of
                     Left err -> parserFail $ show err
                     Right e' -> return e'
@@ -308,10 +308,12 @@ module Parser where
             deriving Show
 
   {- Parser for parsing operators -}
-  binaryOp :: Stream s m Char => ParsecT s u m Op
-  binaryOp = (char '+' >> return PlusOp) 
+  binaryOp1 :: Stream s m Char => ParsecT s u m Op
+  binaryOp1 = (char '+' >> return PlusOp) 
          <|> (char '-' >> return MinusOp) 
-         <|> (string "**" >> return PowOp) 
+
+  binaryOp2 :: Stream s m Char => ParsecT s u m Op
+  binaryOp2 = (string "**" >> return PowOp) 
          <||> (char '*' >> return MultOp) 
          <|> (char '/' >> return DivOp)
 
@@ -329,13 +331,13 @@ module Parser where
   expression :: Stream s m Char => ParsecT s u m Expr
   expression = do e <- many (noneOf " {}")
                   case parse expr "" (reverse e) of
-                    Left err -> parserFail $ show err
-                    Right e' -> return e'
+                    Left err -> if (trace (show e)) False then undefined else parserFail $ show err
+                    Right e' -> if (trace (show e')) False then undefined else return e'
 
   {- Expression := Expression [+-] Term | Term -}
   expr :: Stream s m Char => ParsecT s u m Expr
   expr = do t <- term
-            b <- binaryOp
+            b <- binaryOp1
             e <- expr
             return $ Binary b e t
      <||> term
@@ -343,7 +345,7 @@ module Parser where
   {- Term := Term [*/] Factor | [-sincos] Factor | Factor -}
   term :: Stream s m Char => ParsecT s u m Expr
   term = do f <- factor
-            o <- binaryOp
+            o <- binaryOp2
             t <- term
             return $ Binary o t f
     <||> do t <- factor
@@ -423,16 +425,14 @@ module Parser where
           vp = parse point "" (lookup' "VIEWPLANE" (fromEither s [("VIEWPLANE","")]))
           amb = parse color' "" (lookup' "AMBIENT" (fromEither s [("AMBIENT","")]))
       in
-        if not allP || trace (show eye) (isLeft eye) || trace (show lookat) (isLeft lookat)
-          || trace (show up) (isLeft up) || trace (show vp) (isLeft vp) || trace (show amb) (isLeft amb)
+        if not allP || isLeft eye || isLeft lookat || isLeft up ||
+          isLeft vp || isLeft amb
           then Left "not all config vars present"
           else Right (right eye,right lookat,right up,right vp,right amb)
 
 
   allPresent :: Either ParseError [(String,String)] -> Bool
-  allPresent s 
-    | trace (show s) False = undefined
-    | otherwise =
+  allPresent s =
     case s of
       Left _ -> False
       Right xs -> let vars = ["EYE","LOOKAT","UP","VIEWPLANE","AMBIENT"]
