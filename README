@@ -1,1 +1,12 @@
-A ray tracer.
+Brian Gapinski
+Justin Raymond
+
+COMP356
+Final Project
+
+A ray tracer. To run, type cabal configure.
+Install any dependencies by running cabal install <package1> <package2> ...
+After this finishes, run cabal build to build the project.
+
+Run the project using
+cabal run -- -s <scene file> -w <width> -h <height> --frames <num frames> --softshadows <0 or 1> --antialiasing <num samples> --reflectiondepth <depth> --seed <random seed (Int)> +RTS -N<#numcores>
