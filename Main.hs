@@ -75,7 +75,7 @@ main = do
     --writePPM "output.ppm" iwd iht $ invertY iwd iht pixels
     let go :: Float -> IO ()
         go i | i > 0 = do !(planes',shapes') <- return (partition isPlane (getShapesNow i shapesExpr))
-                          !world <- return $ World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd rng
+                          !world <- return $ World (iwd,iht) (8,6,4) (u,v,w) eye' lookAt' 4 shapes' planes' (makeBbt shapes' AxisX) lts amb as ss rd rng
                           !pixels' <- return $ invertY iwd iht (render world)
                           putStrLn $ "Writing frame " ++ show i
                           writePPM ("img/output" ++ show i ++ ".ppm") iwd iht pixels'
@@ -187,7 +187,7 @@ getShapesNow t = map (evalShapeExpr t)
 --lookAt' = (8,4,1)
 --up = (0,0,1)
 eye' = (15, 2, 15)
-lookAt' = (-1,-1,-1)
+lookAt' = (-1, -1, -1)
 up = (0,1,0)
 w = normalize $ subt eye' lookAt'
 u = normalize $ cross up w
