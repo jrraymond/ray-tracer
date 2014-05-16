@@ -1,9 +1,0 @@
-Material mat_plane    = blue blue black 10.0 grey 0.0 turquoise 0
-Material mat_sphere   = purple purple white 100.0  grey 0.0  black 0.0
-Material btriangle = black  black  grey2  100.0  white  0.0  white 0.0
-Material rtriangle = red  red  grey  100.0  white  0.0  white 0.0
-Material mat_white_tri = white  white  grey2 10.0 black 0.0  black 0.0
-Material mat_yellow_tri = yellow yellow yellow 10.0 black 0.0 black 0.0
-Material mat_glass    = purple purple white 1000.0 white  1.5  green 0.0
-Material mat_gloss = purple purple white 1000.0 grey 0.0 grey 0.2
-Material mat_emerald = emerald emerald grey 1.0 grey 1.2 turquoise 0

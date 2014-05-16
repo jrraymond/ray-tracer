@@ -25,7 +25,7 @@ COLORS
   Color  yellow = 1 0.8 0.4
   Color  emerald = 0.2 1 0.1
   Color  turquoise = 0.1 0.7 0.7
-  Color  glass = 0 0 0
+  Color  glass = 0.1 0.2 0.4
 END
 
 MATERIAL
@@ -37,16 +37,17 @@ MATERIAL
   Material  mat_yellow_tri = yellow yellow yellow 10.0 black 0.0 black 0.0
   Material  mat_gloss = purple purple white 1000.0 grey 0.0 grey 0.2
   Material  mat_emerald = emerald emerald grey 1.0 grey 1.2 turquoise 0
-  Material  mat_glass    = glass glass white 1.0 emerald 1.5 black 0.0
+  Material  mat_glass    = glass glass grey 10.0 emerald 1.2 black 0.0
   Material  mat_red_refl = red red grey 1000.0 grey 0.0 black 0.0
   Material  mat_blue = blue blue grey 1000.0 black 0.0 black 0.0
 END
 
 SHAPES
   Sphere s1 = {0 0 0} 3 mat_glass
-  Sphere s2 = {5*sint 0 5*cost} 1 mat_red_refl
-  Sphere s3 = {0 5*sint 5*cost} 1 mat_emerald
-  Sphere s4 = {5*sint 5*cost 0} 1 mat_blue
-  Sphere s5 = {-9 t -9} 2 mat_sphere
-  Triangle t1 = {-10 0 0} {-10 0 1} {-10 1 1} mat_yellow_tri
+  Sphere s2 = {sin(t*3.14/50)*7 0 cos(t*3.14/50)*7} 1 mat_red_refl
+  Sphere s3 = {0 sin(t*3.15/50)*8 cos(t*3.14/50)*8} 1 mat_emerald
+  Sphere s4 = {sin(t*3.14/50)*6 cos(t*3.14/50)*6 0} 1 mat_blue
+  Triangle t1 = {0 20 0} {1 20 0} {1 20 1} mat_yellow_tri
+  Triangle t2 = {0 -20 0} {1 -20 0} {1 -20 1} mat_yellow_tri
+  Triangle t3 = {-20 0 0} {-20 0 1} {-20 1 1} mat_yellow_tri
 END
