@@ -1,6 +1,7 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE BangPatterns #-}
 module Parser where
   import Control.Applicative hiding (many, (<|>))
   import Control.Monad.Identity
@@ -25,11 +26,64 @@ module Parser where
   p <||> q = try p <|> q
 
   
+  {- ------------ Parsing the scene file -------------------
+  -
+  - This parses files of the form:
+  -   CONFIG
+  -     EYE {15  2 15}
+  -     LOOKAT { -1 -1 -1}
+  -     UP {0 1 0}
+  -     VIEWPLANE 8 6 1
+  -     AMBIENT Color 0.1 0.1 0.1
+  -   END
+  -   LIGHTS
+  -     Light {1 1 1} <color>
+  -   END
+  -   COLORS
+  -     Color <name> = 0.2 0.5 0.8
+  -   END
+  -   MATERIALS
+  -     Material <name> = <material info>
+  -   END
+  -   SHAPES
+  -     <shape> <name> = <information>
+  -   END
+  -
+  -   parseScene parses the string into a tuple of the configuration
+  -   variables, Lights, and surfaces
+  - -}
+  parseScene :: String -> Either String ([(String, String)], 
+                                         [((Expr, Expr, Expr), Color)],
+                                         Map String ShapeExpr)
+  parseScene s = let configs = parse (skipper configOpt "CONFIG" "END") "" s
+                     colormap = parseMap (skipper color "COLORS" "END") () s 
+                     lights = colormap >>= (\cmap -> runParser (skipper light "LIGHTS" "END") cmap "" s)
+                     sfcs = colormap >>= (\cmap -> 
+                            parseMap (skipper material "MATERIAL" "END") cmap s  >>= (\matmap ->
+                            parseMap (skipper shapeExpr "SHAPES" "END") matmap s ))  
+                 in if isLeft configs || isLeft lights || isLeft sfcs  
+                      then Left $ "Failed parsing: " ++ show configs
+                                ++ " " ++ show lights ++ " " ++ show sfcs 
+                      else Right (right configs, right lights, right sfcs)
+
+  configOpt :: ParsecT String () Identity (String, String)
+  configOpt = do skipMany space
+                 k <- optId
+                 skipMany space
+                 v <- manyTill anyChar eol
+                 skipMany space
+                 return (k,v)
+  skipper p start end = manyTill anyChar (try (string start)) >> manyTill p (try $ string end)
+
+  optId = string "EYE" <|> string "LOOKAT" <||> string "UP"
+      <|> string "VIEWPLANE" <|> string "AMBIENT"
+
   eol :: Parser ()
   eol = void $ oneOf "\n\r"
 
-  comment :: Parser ()
-  comment = char '#' >> skipMany (noneOf "\r\n") <?> "comment"
+  parseMap p m s = case runParser p m "" s of
+                          Left err -> Left err
+                          Right xs -> Right (Map.fromList xs)
   
   {- A parser to read an identifier for a color, material, or shape -}
   ident :: Stream s m Char => ParsecT s u m String
@@ -74,10 +128,20 @@ module Parser where
                 m <- getState
                 return $  fromMaybe (error "unknown id") ((c:cs) `Map.lookup` m)
 
+  {- A parser for a light -}
+  light :: GenParser Char (Map String Color) ((Expr,Expr,Expr),Color)
+  light = do skipMany space
+             _ <- string "Light"
+             skipMany space
+             p <- pointExpr 
+             c <- color' <||> identify
+             return (p,c)
+
   {- A color may either be a color bound to an identifier or an anonymous
   - color -}
   color :: Stream s m Char => ParsecT s u m (String, Color)
-  color = do _ <- string "Color"
+  color = do skipMany space
+             _ <- string "Color"
              key <- ident
              _ <- char '='
              skipMany space 
@@ -102,16 +166,17 @@ module Parser where
   - materials. Colors in a material may be anonymous colors or a color
   - identifier -}
   material :: GenParser Char (Map String Color) (String,Material)
-  material = do _ <- string "Material"
+  material = do skipMany space
+                _ <- string "Material"
                 key <- ident
                 _ <- char '='
-                amb <- color' <|> identify
-                dif <- color' <|> identify
-                spe <- color' <|> identify
+                amb <- color' <||> identify
+                dif <- color' <||> identify
+                spe <- color' <||> identify
                 bp <- float
-                refl <- color' <|> identify
+                refl <- color' <||> identify
                 refr <- float
-                attn <- color' <|> identify
+                attn <- color' <||> identify
                 gloss <- float
                 skipMany space
                 return (key,(amb, dif, spe, bp, refl, refr, attn, gloss))
@@ -177,7 +242,7 @@ module Parser where
                  return (key, PlaneE a b c mat)
 
   shapeExpr :: Stream s m Char => ParsecT s (Map String Material) m (String, ShapeExpr)
-  shapeExpr = sphereExpr <|> triangleExpr <|> planeExpr
+  shapeExpr = skipMany space *> sphereExpr <|> triangleExpr <|> planeExpr
 
   readShapesExpr :: Map String Material -> String -> Either ParseError (Map String ShapeExpr)
   readShapesExpr m ss = case runParser (many shapeExpr) m "" ss of
@@ -288,3 +353,12 @@ module Parser where
   evalShapeExpr t (SphereE c r mat) = Sphere (evalExprTuple t c) (evalExpr t r) mat
   evalShapeExpr t (TriangleE a b c mat) = Triangle (evalExprTuple t a) (evalExprTuple t b) (evalExprTuple t c) mat
   evalShapeExpr t (PlaneE a b c mat) = Plane (evalExprTuple t a) (evalExprTuple t b) (evalExprTuple t c) mat
+
+  isLeft :: Either a b -> Bool
+  isLeft (Left _) = True
+  isLeft _ = False
+
+  {- Precondition : Either a b is of the form Right _ -}
+  right :: Either a b -> b
+  right (Right r) = r
+  right  _ = error "precondition violated"
