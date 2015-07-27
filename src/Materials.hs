@@ -24,11 +24,11 @@ gold :: Color
 gold = Color 1 0.842 0
 
 whiteDull :: Material
-whiteDull = makeMaterial white white 1 0 0 (Color 0 0 0)
+whiteDull = makeMaterial white white 1 0 0 (Color 99 99 99)
 whiteShiny :: Material
-whiteShiny = makeMaterial white white 100 0.3 0 (Color 0 0 0)
+whiteShiny = makeMaterial white white 100 0.3 0 (Color 99 99 99)
 whiteGlossy :: Material
-whiteGlossy = makeMaterial white white 1000 0.6 0 (Color 0 0 0)
+whiteGlossy = makeMaterial white white 1000 0.6 0 (Color 99 99 99)
 
 redDull :: Material
 redDull = makeMaterial red red 10 0 0 red
@@ -42,27 +42,27 @@ blueDull :: Material
 blueDull = makeMaterial blue blue 10 0 0 blue
 
 whiteMirror :: Material
-whiteMirror = makeMaterial white white 10000 1 0 (Color 0 0 0)
+whiteMirror = makeMaterial white white 10000 1 0 (Color 99 99 99)
 purpleM :: Material
 purpleM = makeMaterial purple purple 10000 1 0 (Color 1 1 1)
 purpleDull :: Material
 purpleDull = makeMaterial purple purple 10 0 0 (Color 1 1 1)
 redM :: Material
-redM = makeMaterial red red 10000 1.0 0 (Color 0 0 0)
+redM = makeMaterial red red 10000 1.0 0 (Color 99 99 99)
 greenM :: Material
-greenM = makeMaterial green green 10000 1.0 0 (Color 0 0 0)
+greenM = makeMaterial green green 10000 1.0 0 (Color 99 99 99)
 blueM :: Material
-blueM = makeMaterial blue blue 10000 1 0 (Color 0 0 0)
+blueM = makeMaterial blue blue 10000 1 0 (Color 99 99 99)
 blackM :: Material
-blackM = makeMaterial black black 10000 1 0 (Color 0 0 0)
+blackM = makeMaterial black black 10000 1 0 (Color 99 99 99)
 darkgreyM :: Material
-darkgreyM = makeMaterial darkgrey darkgrey 0 1 0 (Color 0 0 0)
+darkgreyM = makeMaterial darkgrey darkgrey 0 1 0 (Color 99 99 99)
 yellowM :: Material
-yellowM = makeMaterial yellow yellow 10 1 0 (Color 0 0 0)
+yellowM = makeMaterial yellow yellow 10 1 0 (Color 99 99 99)
 goldM :: Material
-goldM = makeMaterial gold gold 10 1 0 (Color 0 0 0)
+goldM = makeMaterial gold gold 10000 1 0 (Color 99 99 99)
 goldD :: Material
-goldD = makeMaterial gold gold 10 0 0 (Color 0 0 0)
+goldD = makeMaterial gold gold 10 0 0 (Color 99 99 99)
 glass :: Material
 glass = makeMaterial black white 10000 1 1.5 white
 diamond :: Material

@@ -3,6 +3,7 @@ module Main where
 import BenchmarkScene
 import BenchmarkScene2
 import BenchmarkScene3
+import BenchmarkScene4
 import GlassCubesScene
 import Geometry3
 import BoundingVolumeHierarchy
@@ -20,15 +21,10 @@ import Options.Applicative
 
 {- 
 - TODO scene file parsing
+- TODO bounding boxes
 - TODO depth of field
 - TODO light dissapation
-- TODO bvh improvement?
-- TODO give kd-trees a shot?
-- TODO continuation passing style to remove intermediate unboxing
-- TODO -N>1
 -}
-type Point = (Float,Float)
-type Grid = [Point]
 
 main :: IO ()
 main = execParser opts >>= run
@@ -38,11 +34,12 @@ main = execParser opts >>= run
 
 run :: Config -> IO ()
 run _ = do 
-  let c = bench2Config
-  let w = bench2World
+  let c = bench4Config
+  let w = bench4World
   rng <- newPureMT
+  let rs = chunksOf (wAntiAliasing w) (chunksOf (wDOF w) (randomPairs rng))
   let grids = generateGrids rng (cImageWidth c + 10) (wAntiAliasing w)
-  let img = render grids w
+  let img = render (zip rs grids) w
   putStrLn "rendering . . ."
   writePPM "img.ppm" (cImageWidth c) (cImageHeight c) img
   putStrLn ". . . done"
@@ -67,6 +64,11 @@ randomFloats :: PureMT -> [Float]
 randomFloats rng = let (d,rng') = first double2Float (randomDouble rng)
                    in d : randomFloats rng'
 
+randomPairs :: PureMT -> [(Float,Float)]
+randomPairs rng = let (a,rng') = first double2Float (randomDouble rng)
+                      (b,rng'') = first double2Float (randomDouble rng')
+                  in (a,b) : randomPairs rng''
+
 
 data Config = Config { cImageWidth :: Int
                      , cImageHeight :: Int
@@ -75,6 +77,8 @@ data Config = Config { cImageWidth :: Int
                      , cViewDistance :: Int
                      , cReflectionDepth :: Int
                      , cAntiAliasing :: Int
+                     , cDOF :: Int
+                     , cLens :: Float
                      , cUp :: Vec3
                      , cEye :: Vec3
                      , cLookAt :: Vec3
@@ -95,6 +99,10 @@ configure = Config <$> option auto (long "width" <> value 400 <>
                                    help "maximum reflections, default 3")
                    <*> option auto (long "anti-aliasing" <> value 1 <>
                                    help "rays per pixel, default 1")
+                   <*> option auto (long "depth-of-field" <> value 1 <>
+                                   help "depth of field rays, default 1")
+                   <*> option auto (long "lens" <> value 0 <>
+                                   help "lens size, default 0")
                    <*> option auto (long "up" <> metavar "UP_DIRECTION" <>
                                    value (Vec3 0 1 0) <>
                                    help "unit vector indicating up, default 0 1 0")
@@ -111,7 +119,7 @@ configure = Config <$> option auto (long "width" <> value 400 <>
 - - all float in the range [0,1], but writing a ppm does not, so we need
 - - this to write the ppm -}
 clamp :: Float -> Float
-clamp x | x < 0 = 0 | x > 1 = 1 | isNaN x = 0 | otherwise = x
+clamp x | x < 0 = 0 | x > 1 = 1 | otherwise = x
 {-# INLINE clamp #-}
 
 
@@ -123,10 +131,12 @@ configToWorld c objs lights =
           , wViewHt = fromIntegral (cViewHeight c)
           , wViewDt = fromIntegral (cViewDistance c)
           , wAntiAliasing = floor (sqrt (fromIntegral (cAntiAliasing c) :: Float))
+          , wDOF = cDOF c
+          , wLens = cLens c
           , wUp = cUp c
           , wEye = cEye c
           , wCamera = getCam (cEye c) (cLookAt c) (cUp c)
-          , wObjects = meanBVH objs
+          , wObjects = sahBVH objs
           , wAmbient = Color 0.1 0.1 0.1
           , wLights = lights
           , wMaxDepth = cReflectionDepth c
@@ -159,6 +169,8 @@ bench1Config = Config 800 600
                      8 6 7
                      6
                      25
+                     1
+                     0
                      (Vec3 0 1 0)
                      (Vec3 20 5 20)
                      (Vec3 0 0 0)
@@ -172,6 +184,8 @@ bench2Config = Config 800 600
                      8 6 7
                      6
                      25
+                     1
+                     0
                      (Vec3 0 1 0)
                      (Vec3 25 10 25)
                      (Vec3 0 0 0)
@@ -183,17 +197,34 @@ bench3Config = Config 800 600
                      8 6 7
                      6
                      25
+                     1
+                     0
                      (Vec3 0 1 0)
                      (Vec3 25 0 25)
                      (Vec3 0 0 0)
 bench3World :: World
 bench3World = configToWorld bench3Config bench3Objects bench3Lights
 
+bench4Config :: Config
+bench4Config = Config 800 600 
+                      80 60 70
+                      6
+                      25
+                      25
+                      0.10
+                      (Vec3 0 1 0)
+                      (Vec3 50 5 0)
+                      (Vec3 0 0 0)
+bench4World :: World
+bench4World = configToWorld bench4Config bench4Objects bench4Lights
+
 glassConfig :: Config
 glassConfig = Config 800 600
                      8 6 7  
                      10 
                      64
+                     1
+                     0
                      (Vec3 0 1 0)
                      (Vec3 20 0 0)
                      (Vec3 0 0 0)

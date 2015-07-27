@@ -1,10 +1,10 @@
+{-# LANGUAGE BangPatterns #-}
 module RayTracer where
 
 import Geometry3
 import Objects
 import Surfaces
 import BoundingVolumeHierarchy
-import Control.Parallel.Strategies hiding (dot)
 
 
 data World = World { wImgWd :: Float
@@ -13,6 +13,8 @@ data World = World { wImgWd :: Float
                    , wViewHt :: Float
                    , wViewDt :: Float
                    , wAntiAliasing :: Int --sqrt of number of rays to cast
+                   , wDOF :: Int --number of rays for depth of field
+                   , wLens :: Float --length of side of lens (0 for pinhole)
                    , wUp :: Vec3
                    , wEye :: Vec3
                    , wCamera :: (Vec3,Vec3,Vec3)
@@ -21,27 +23,30 @@ data World = World { wImgWd :: Float
                    , wLights :: [Light]
                    , wMaxDepth :: Int
                    } deriving Show
-type Pt3 = Vec3
+type Point3 = Vec3
+type Point = (Float,Float)
+type Grid = [Point]
 
-{- jittered grids, shuffled jittered grids, world -}
-render :: [([(Float,Float)],[(Float,Float)])] -> World -> [Color]
+{- jittered grids, world -}
+render :: [([[Point]],(Grid,Grid))] -> World -> [Color]
 render grids world = cs where 
   ps = [ (i,j) | j <- reverse [0..wImgHt world - 1] , i <- [0..wImgWd world - 1] ]
-  cs = concat $ withStrategy (parBuffer 40 rdeepseq) (chunksOf 100 (map (colorPixel world) (zip ps grids)))
-  --cs = withStrategy (parBuffer 50 rdeepseq) (map (colorPixel world) (zip ps grids))
-  --cs = withStrategy (parListChunk (round (wImgWd world / 4)) rdeepseq) (map (colorPixel world) (zip ps grids))
   --cs = withStrategy (parBuffer 1000 rdeepseq) $ map (raytrace world (maxDepth world) . getRay world) ps
-  --cs = map (colorPixel world) (zip ps grids)
+  cs = map (colorPixel world) (zip ps grids)
 
-colorPixel :: World -> ((Float,Float),([(Float,Float)],[(Float,Float)])) -> Color
-colorPixel w ((i,j),(pts,sh_grid)) = avgColors cs where
+--TODO clean up zipping and unzipping
+colorPixel :: World -> (Point,([[Point]],(Grid,Grid))) -> Color
+colorPixel w ((i,j),(rrs,(pts,sh_grid))) = avgColors cs where
   d = wMaxDepth w
-  cs = map (\((p,q),rfts) -> raytrace w d rfts (getRay w (i+p,j+q))) (zip pts sh_grid)
+  cs = map (\(rs,(p,q),rfts) -> let rays = map (getRay w (i+p,j+q)) rs
+                                    cs0 = map (raytrace w d rfts) rays
+                                in avgColors cs0)
+                                (zip3 rrs pts sh_grid)
 {-# INLINE colorPixel #-}
 
 
 {- TODO use continuations with hitBVH -}
-raytrace :: World -> Int -> (Float,Float) -> Ray3 -> Color
+raytrace :: World -> Int -> Point -> Ray3 -> Color
 raytrace _ 0 _ _ = Color 0 0 0
 raytrace world depth rfts (Ray3 (base,dir)) = clr where
   objs = wObjects world
@@ -69,10 +74,10 @@ getNormal (Triangle _ _ _ tn _) _ = tn
 
 getDirectColor :: [Light] 
                -> BVH
-               -> (Float,Float)  --random floats [0,1) to jitter on light
+               -> Point  --random floats [0,1) to jitter on light
                -> Color
                -> Object
-               -> Pt3
+               -> Point3
                -> Vec3
                -> Vec3
                -> Color
@@ -93,22 +98,20 @@ getDirectColor (Light l_corner l_a l_b l_c:ls) objs (ra,rb) ambient_c obj pt n v
     color = mixColors (+) diffuse_c spec_c
 {-# INLINE getDirectColor #-}  
 
--- TODO something very odd is going on with refraction
---  1) when dir and normal are in opposite directions, most light should
---     be refracted but it seems that most of it is being reflected SOLVED
---  2) the attenuation of the material does not seem to be having effect on
---     the color
-getIndirectColor :: World -> Int -> (Float,Float) --info for recursive raytrace calls
+
+getIndirectColor :: World -> Int -> Point --info for recursive raytrace calls
                  -> Vec3                          --ray dir
                  -> Vec3                          --point
                  -> Vec3                          --surface normal
                  -> Object
                  -> Color
-getIndirectColor w depth rfts dir pt normal obj = color 
+getIndirectColor w depth rfts dir pt normal obj
+  | nt == 0 = refl_c
+  | otherwise = color 
   where
     --reflected color
     refl_c = scaleColor (* reflectionIndex obj) $ 
-             mixColors (*) (specularColor obj) $
+             mixColors (*) (specularColor obj) $ 
              raytrace w (depth - 1) rfts (Ray3 (pt,reflect dir normal))
     nt = refractionIndex obj
     --c: angle of incidence, k: attenuation, t: refracted ray
@@ -134,7 +137,6 @@ getIndirectColor w depth rfts dir pt normal obj = color
                              refl_c' = scaleColor (*bigR) refl_c
                              refr_c' = scaleColor (*(1-bigR)) refr_c
                          in mixColors (*) k (mixColors (+) refl_c' refr_c')
-                         --in mixColors (*) (Color 0.01 99999 0.01) (mixColors (+) refl_c' refr_c')
 {-# INLINE getIndirectColor #-}
 
 
@@ -142,7 +144,7 @@ getIndirectColor w depth rfts dir pt normal obj = color
  - the result is already normalized
  -}
 reflect :: Vec3 -> Vec3 -> Vec3
-reflect dir n = subt dir (multiply n (2 * dot dir n))
+reflect !dir !n = subt dir (multiply n (2 * dot dir n))
 {-# INLINE reflect #-}
 
 {- ray dir, normal, refraction index, maybe refracted dir 
@@ -160,34 +162,41 @@ refract dir normal nt
     t = normalize $ subt y (multiply normal (sqrt x))
 {-# INLINE refract #-}
 
-getRay :: World -> (Float,Float) -> Ray3
-getRay world (i,j) = ray where
+
+{- world, point on view plane, base perturbations -}
+getRay :: World -> Point -> Point -> Ray3
+getRay world (i,j) (r1,r2) = ray where
+  lens = wLens world
+  eye = wEye world
+  (u,v,w) = wCamera world
+  ru = subt (vecM (* (r1 * lens)) u) (vecM (* (lens / 2)) u)
+  rv = subt (vecM (* (r2 * lens)) v) (vecM (* (lens / 2)) v)
+  base = add eye (add ru rv)
   vWd = wViewWd world
   vHt = wViewHt world
   vDt = wViewDt world
   iWd = wImgWd world
   iHt = wImgHt world
-  (u,v,w) = wCamera world
-  base = wEye world
-  u_world = (i+0.5)*vWd/iWd - vWd/2.0
-  v_world = (j+0.5)*vHt/iHt - vHt/2.0
-  w_world = -1.0*vDt
+  u_world = i * vWd / iWd - vWd / 2.0
+  v_world = j * vHt / iHt - vHt / 2.0
+  w_world = negate vDt
   u_dir = multiply u u_world
   v_dir = multiply v v_world
   w_dir = multiply w w_world
-  dir = add w_dir $ add u_dir v_dir
-  ray = Ray3 (base,normalize dir)
-{-# INLINE getRay #-}
+  dir = add w_dir (add u_dir v_dir)
+  fdir = subt (add dir eye) base
+  ray = Ray3 (base,normalize fdir)
+{-# INLINABLE getRay #-}
 
 {- dimension of grid -}
-getGrid :: Int -> [(Float,Float)]
+getGrid :: Int -> Grid
 getGrid n = 
   let n' = fromIntegral n
   in [ ((p + 0.5) / n', (q + 0.5) / n') | p <- [0..n'-1] , q <- [0..n'-1] ]
 {-# INLINE getGrid #-}
 
 {- dimension of grid, list of random floats [0,1] -}
-getGridR :: Int -> [Float] -> [(Float,Float)]
+getGridR :: Int -> [Float] -> Grid
 getGridR n rs = pts where
   nn = n * n
   (irs,jrs) = splitAt nn rs
@@ -201,6 +210,7 @@ chunksOf n = go
   where go xs = case splitAt n xs of
                   (ys,zs) | null ys -> []
                           | otherwise -> ys : go zs
+{-# INLINE chunksOf #-}
 
 inShadow :: BVH -> Vec3 -> Vec3 -> Float -> Bool
 inShadow bvh pt dir max_d= case hitBVH (Ray3 (pt,dir)) bvh of
@@ -332,3 +342,9 @@ hitBVH ray (Node left right _)
     hitsL = hitsBox ray (bvhBox left)
     hitsR = hitsBox ray (bvhBox right)
 {-# INLINABLE hitBVH #-}
+
+badColor :: Color -> Bool
+badColor (Color r g b) = any isNaN [r,g,b]
+
+badVec :: Vec3 -> Bool
+badVec (Vec3 x y z) = any isNaN [x,y,z]
