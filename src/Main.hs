@@ -4,7 +4,7 @@ import BenchmarkScene
 import BenchmarkScene2
 import BenchmarkScene3
 import BenchmarkScene4
-import GlassCubesScene
+import BenchmarkScene5
 import Geometry3
 import BoundingVolumeHierarchy
 import Objects
@@ -21,9 +21,12 @@ import Options.Applicative
 
 {- 
 - TODO scene file parsing
-- TODO bounding boxes
-- TODO depth of field
 - TODO light dissapation
+- TODO texture mapping
+- TODO glossy reflection - DONE but I think it could be improved:
+-   1) I use phong exp to determine glossy reflection, is this ok?
+-   2) the is another method that I'd like to try that sounds fancy and has
+-   the words monte-carlo in it
 -}
 
 main :: IO ()
@@ -34,8 +37,8 @@ main = execParser opts >>= run
 
 run :: Config -> IO ()
 run _ = do 
-  let c = bench4Config
-  let w = bench4World
+  let c = bench5Config
+  let w = bench5World
   rng <- newPureMT
   let rs = chunksOf (wAntiAliasing w) (chunksOf (wDOF w) (randomPairs rng))
   let grids = generateGrids rng (cImageWidth c + 10) (wAntiAliasing w)
@@ -218,16 +221,15 @@ bench4Config = Config 800 600
 bench4World :: World
 bench4World = configToWorld bench4Config bench4Objects bench4Lights
 
-glassConfig :: Config
-glassConfig = Config 800 600
-                     8 6 7  
-                     10 
-                     64
-                     1
-                     0
-                     (Vec3 0 1 0)
-                     (Vec3 20 0 0)
-                     (Vec3 0 0 0)
-
-glassWorld :: World
-glassWorld = configToWorld glassConfig glassObjects glassLights
+bench5Config :: Config
+bench5Config = Config 1600 900 
+                      16 9 7
+                      6
+                      64
+                      1
+                      0.0
+                      (Vec3 0 1 0)
+                      (Vec3 20 0 0)
+                      (Vec3 0 0 0)
+bench5World :: World
+bench5World = configToWorld bench5Config bench5Objects bench5Lights

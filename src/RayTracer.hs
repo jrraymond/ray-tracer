@@ -105,14 +105,20 @@ getIndirectColor :: World -> Int -> Point --info for recursive raytrace calls
                  -> Vec3                          --surface normal
                  -> Object
                  -> Color
-getIndirectColor w depth rfts dir pt normal obj
+getIndirectColor w depth rfts@(r1,r2) dir pt normal obj
   | nt == 0 = refl_c
   | otherwise = color 
   where
-    --reflected color
+    --reflected color, if glossy randomly sample square to jitter reflected ray
+    refl0 = reflect dir normal
+    (u,v) = orthonormal refl0
+    a = 1 / phongExp obj
+    ju = -a / 2 + r1 * a --cheat and use shadow ray random floats
+    jv = -a / 2 + r2 * a
+    refl_v = add refl0 (add (multiply u ju) (multiply v jv))
     refl_c = scaleColor (* reflectionIndex obj) $ 
              mixColors (*) (specularColor obj) $ 
-             raytrace w (depth - 1) rfts (Ray3 (pt,reflect dir normal))
+             raytrace w (depth - 1) rfts (Ray3 (pt,refl_v))
     nt = refractionIndex obj
     --c: angle of incidence, k: attenuation, t: refracted ray
     dn = dot dir normal
@@ -348,3 +354,12 @@ badColor (Color r g b) = any isNaN [r,g,b]
 
 badVec :: Vec3 -> Bool
 badVec (Vec3 x y z) = any isNaN [x,y,z]
+
+{- Creates orthonormal basis (u,v,w) for NORMALIZED vector w -}
+orthonormal :: Vec3 -> (Vec3,Vec3)
+orthonormal w = let t | w == Vec3 1 0 0 = Vec3 0 1 0
+                      | otherwise = Vec3 1 0 0
+                    u = normalize (cross t w)
+                    v = cross w u
+                in (u,v)
+{-# INLINABLE orthonormal #-}
