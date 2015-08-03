@@ -1,7 +1,36 @@
+{-# LANGUAGE MultiParamTypeClasses, TemplateHaskell, TypeFamilies,GeneralizedNewtypeDeriving, FlexibleInstances #-}
 module Objects where
 
 import Geometry3
 import Surfaces
+import qualified Data.Vector.Unboxed as U
+import Data.Vector.Unboxed.Deriving
+
+
+
+data Vertex = Vertex { vVertex   :: !Int
+                     , vTexture  :: !Int
+                     , vNormal   :: !Int 
+                     } deriving (Eq,Show,Read)
+
+--3 vertex indeces and material index
+data TriFace = TriFace !Vertex !Vertex !Vertex !Int deriving (Eq,Read,Show)
+
+derivingUnbox "Vertex"
+  [t| Vertex -> (Int,Int,Int) |]
+  [| \ (Vertex x y z) -> (x,y,z) |]
+  [| \ (x,y,z) -> Vertex x y z |] 
+
+derivingUnbox "TriFace"
+  [t| TriFace -> (Vertex,Vertex,Vertex,Int) |]
+  [| \ (TriFace w x y z) -> (w,x,y,z) |]
+  [| \ (w,x,y,z) -> TriFace w x y z |] 
+
+data Mesh = Mesh { meshVertices :: U.Vector Vec3
+                 , meshNormals :: U.Vector Vec3
+                 , meshMaterials :: U.Vector Material
+                 , meshTriFaces :: U.Vector TriFace
+                 } deriving (Eq,Read,Show)
 
 data Object = Sphere { spherePos :: !Vec3
                      , sphereRad :: !Float
@@ -27,6 +56,10 @@ calcNormal a b c = normalize $ cross (subt b a) (subt c a)
 {- Smart Constructor for Object that computes triangle normal -}
 makeTriangle :: Vec3 -> Vec3 -> Vec3 -> Material -> Object
 makeTriangle a b c = Triangle a b c (calcNormal a b c)
+
+okObject :: Object -> Bool
+okObject Sphere{} = True
+okObject (Triangle a b c n _) = a /= b && b /= c && a /= c && okVec3 n
 
 
 makeParallelPiped :: Vec3     -- corner point

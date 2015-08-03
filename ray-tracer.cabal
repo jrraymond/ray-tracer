@@ -27,25 +27,10 @@ Flag Dump
 executable ray-tracer
   main-is:             Main.hs
   build-depends:       base         >=    4.5  && < 5
-                     --, containers   >=    0.5.0.0
-                     --, array        >=    0.4.0.1
-                     --, OpenGL       >=    2.8.0.0
-                     --, GLUT         >=    2.4.0.0
-                     --, vector       >=    0.10.0.1
-                     --, semigroups   >=    0.13.0.0
-                     --, parsec       >=    3.1.3.0
-                     --, parallel     >=    3.2.0.0
-                     --, deepseq      >=    1.1.0.0
-                     --, random       >=    1.0.1.1
-                     --, mtl          >=    2.1.2
                      , process
                      , parallel
                      , deepseq
-                     , gloss
-                     , gloss-raster
                      , optparse-applicative
-                     --, repa
-                     --, repa-io
                      , transformers
                      , mtl
                      , containers
@@ -54,14 +39,12 @@ executable ray-tracer
                      , random
                      , random-shuffle
                      , mersenne-random-pure64
-                     , directory
-                     , bytestring
-                     , binary
-                     , text
+                     , vector
+                     , vector-th-unbox
           
   hs-source-dirs:      src
   default-language:    Haskell2010
-  GHC-Options: -Wall -O2 -rtsopts -threaded -feager-blackholing -eventlog
+  GHC-Options: -Wall -O2 -rtsopts -threaded -feager-blackholing -eventlog -fno-warn-unused-do-bind -fno-warn-missing-signatures -funbox-strict-fields
 
   if flag(Eventlog)
     GHC-Options: -O2 -rtsopts -funbox-strict-fields -threaded -eventlog -Wall

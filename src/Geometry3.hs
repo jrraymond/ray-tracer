@@ -1,7 +1,15 @@
+{-# LANGUAGE MultiParamTypeClasses, TemplateHaskell, TypeFamilies,GeneralizedNewtypeDeriving, FlexibleInstances #-}
 module Geometry3 where
+
+import Data.Vector.Unboxed.Deriving
 
 data Vec3 = Vec3 !Float !Float !Float deriving (Show, Eq, Read)
 newtype Ray3 = Ray3 (Vec3,Vec3) deriving (Eq, Read, Show)
+
+derivingUnbox "Vec3"
+  [t| Vec3 -> (Float,Float,Float) |]
+  [| \ (Vec3 x y z) -> (x,y,z) |]
+  [| \ (x,y,z) -> Vec3 x y z |] 
 
 add :: Vec3 -> Vec3 -> Vec3
 add (Vec3 x1 y1 z1) (Vec3 x2 y2 z2) = Vec3 (x1 + x2) (y1 + y2) (z1 + z2)
@@ -45,3 +53,6 @@ vecM f (Vec3 a b c) = Vec3 (f a) (f b) (f c)
 
 inf :: Float
 inf = read "Infinity"
+
+okVec3 :: Vec3 -> Bool
+okVec3 (Vec3 x y z) = not (any isNaN [x,y,z])

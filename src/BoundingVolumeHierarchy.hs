@@ -2,7 +2,7 @@ module BoundingVolumeHierarchy where
 
 import Objects
 import Geometry3
-import Data.List (foldl1',sortOn,scanl',minimumBy,maximumBy)
+import Data.List (foldl',sortOn,scanl',minimumBy,maximumBy)
 import Data.Ord (comparing)
 
 data Axis = XAxis | YAxis | ZAxis deriving (Eq,Read,Show)
@@ -46,7 +46,8 @@ sahBVH :: [Object] -> BVH
 sahBVH objs = go (map (\o -> (toBox o,o)) objs) where
   go :: [(Box,Object)] -> BVH
   go xs 
-    | bestCost > leafCost = Leaf (map snd xs) leafBox
+    | null xs = error "null xs"
+    | length xs < 3 || bestCost > leafCost = Leaf (map snd xs) leafBox
     | otherwise = Node left right nodeBox
     where
       t_tri = 1.0
@@ -58,16 +59,17 @@ sahBVH objs = go (map (\o -> (toBox o,o)) objs) where
       left = go ls
       right = go rs
       nodeBox = surround (bvhBox left) (bvhBox right)
-      leafBox = foldl1' surround boxes
+      leafBox = foldl' surround EmptyBox boxes
 
 {- uses SAH to find a good split of list of boxes along a specific axis
 - returns the index of the split and estimated cost of split -}
 bestSplit :: [Box] -> Axis -> (Int,Float)
+bestSplit [] _ = error "best split"
 bestSplit [_] _ = (0,inf)
 bestSplit boxes0 axis = 
     let n = length boxes
         boxes = sortOn (midBox axis) boxes0
-        box = foldl1' surround boxes
+        box = foldl' surround EmptyBox boxes
         isa = 1 / surfaceArea box
         lbs = scanl' surround EmptyBox boxes
         rbs = scanr surround EmptyBox boxes
@@ -76,7 +78,9 @@ bestSplit boxes0 axis =
                                           rsa = surfaceArea rb
                                       in (i,sahCost isa i lsa (n - i) rsa))
                          lbs rbs [0..]
-    in minimumBy (comparing snd) (filter (not . isNaN . snd) costs)
+    in case filter (not . isNaN . snd) costs of
+         [] -> (0,inf)
+         costs' -> minimumBy (comparing snd) costs'
 
 
 
@@ -120,7 +124,7 @@ meanBVH objs = go (map (\o -> (toBox o,o)) objs)
         ((var,mid),bestAxis) = maximumBy (comparing (fst . fst)) vs
         n = fromIntegral (length objs) :: Float
         (left,right) = partition' xs mid bestAxis
-        box = foldl1' surround boxes
+        box = foldl' surround EmptyBox boxes
 
 {- calculates the variance of midpoints of boxes along axis -}
 midPtVariance :: [Box] -> Axis -> (Float,Float)
@@ -128,17 +132,14 @@ midPtVariance boxes axis = (variance,mid)
   where
     n = fromIntegral (length boxes)
     midPts = map (midBox axis) boxes
-    mid = foldl1' (+) midPts / n
+    mid = foldl' (+) 0 midPts / n
     dvtns = map (\x -> (x - mid) ** (2 :: Float)) midPts
-    variance = foldl1' (+) dvtns / n
+    variance = foldl' (+) 0 dvtns / n
 
 
-
-nextAxis :: Axis -> Axis
-nextAxis axis = case axis of
-                  XAxis -> YAxis
-                  YAxis -> ZAxis
-                  ZAxis -> XAxis
+{- for debugging only -}
+noBVH :: [Object] -> BVH
+noBVH objs = Leaf objs (foldl' surround EmptyBox (map toBox objs))
 
 
 

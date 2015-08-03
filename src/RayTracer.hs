@@ -226,7 +226,7 @@ inShadow bvh pt dir max_d= case hitBVH (Ray3 (pt,dir)) bvh of
 
 
 epsilon :: Float
-epsilon = 0.0001
+epsilon = 0.00000001
 
 diffuseColor :: Object -> Color
 diffuseColor (Sphere _ _ (Material diff_c _ _ _ _ _)) = diff_c
@@ -338,15 +338,12 @@ hits (Ray3 (base,dir)) = go0
 
 hitBVH :: Ray3 -> BVH -> Maybe HitRec
 hitBVH _ Empty = Nothing
-hitBVH ray (Leaf os _) = hits ray os
-hitBVH ray (Node left right _) 
-  | hitsL && hitsR = max (hitBVH ray left) (hitBVH ray right)
-  | hitsL = hitBVH ray left
-  | hitsR = hitBVH ray right
+hitBVH ray (Leaf os box) 
+  | hitsBox ray box = hits ray os
   | otherwise = Nothing
-  where
-    hitsL = hitsBox ray (bvhBox left)
-    hitsR = hitsBox ray (bvhBox right)
+hitBVH ray (Node left right box) 
+  | hitsBox ray box = max (hitBVH ray left) (hitBVH ray right)
+  | otherwise = Nothing
 {-# INLINABLE hitBVH #-}
 
 badColor :: Color -> Bool

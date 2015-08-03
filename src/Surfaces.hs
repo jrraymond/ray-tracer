@@ -1,7 +1,10 @@
+{-# LANGUAGE MultiParamTypeClasses, TemplateHaskell, TypeFamilies,GeneralizedNewtypeDeriving, FlexibleInstances #-}
 module Surfaces where
 
 import Control.DeepSeq
 import Data.List (foldl')
+import qualified Data.Vector.Unboxed as U
+import Data.Vector.Unboxed.Deriving
 
 
 data Color = Color !Float !Float !Float deriving (Eq, Show, Read)
@@ -41,3 +44,13 @@ data Material =
 makeMaterial :: Color -> Color -> Float -> Float -> Float -> Color -> Material
 makeMaterial diffuse specular phong reflIx refrIx atten =
   Material diffuse specular phong reflIx refrIx (scaleColor log atten)
+
+derivingUnbox "Color"
+  [t| Color -> (Float,Float,Float) |]
+  [| \ (Color x y z) -> (x,y,z) |]
+  [| \ (x,y,z) -> Color x y z |] 
+
+derivingUnbox "Material"
+  [t| Material -> (Color,Color,Float,Float,Float,Color) |]
+  [| \ (Material u v w x y z) -> (u,v,w,x,y,z) |]
+  [| \ (u,v,w,x,y,z) -> Material u v w x y z |] 
