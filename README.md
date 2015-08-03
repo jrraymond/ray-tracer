@@ -12,4 +12,4 @@ depth of field
 .obj scene imports
 
 Images:
-![Station](https://github.com/jrraymond/ray-tracer/blob/master/images/station144.png)
+![Station](https://github.com/jrraymond/ray-tracer/blob/master/images/station.png)
