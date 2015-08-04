@@ -26,14 +26,81 @@ data World = World { wImgWd :: Float
 type Point3 = Vec3
 type Point = (Float,Float)
 type Grid = [Point]
+{- Hessian normal form: 
+-   dot n x = b where n is normal and b is offset
+-   distance = dot n x - b
+-}
+data Frustum = Frustum { fBotOffset   :: !Float
+                       , fTopOffset   :: !Float
+                       , fLeftOffset  :: !Float
+                       , fRightOffset :: !Float
+                       , fBotN        :: !Vec3
+                       , fTopN        :: !Vec3
+                       , fLeftN       :: !Vec3
+                       , fRightN      :: !Vec3
+                       } deriving (Eq,Read,Show)
+
+data Packet = Packet !Frustum [Ray3] deriving (Eq,Read,Show)
 
 {- jittered grids, world -}
 render :: [([[Point]],(Grid,Grid))] -> World -> [Color]
 render grids world = cs where 
   ps = [ (i,j) | j <- reverse [0..wImgHt world - 1] , i <- [0..wImgWd world - 1] ]
   --cs = withStrategy (parBuffer 1000 rdeepseq) $ map (raytrace world (maxDepth world) . getRay world) ps
-  cs = map (colorPixel world) (zip ps grids)
+  --cs = map (colorPixel world) (zip ps grids)
+  cs = map (colorPacket world . getRayPacket world) (zip ps grids)
 
+colorPacket :: World -> (Packet,[Point]) -> Color
+colorPacket w (packet@(Packet _ rays),shpts) = avgColors colors
+  where
+    d = wMaxDepth w
+    hrecs = pHitBVH packet (wObjects w)
+    colors = zipWith3 (colorRay w d) shpts rays hrecs
+{-# INLINABLE colorPacket #-}
+
+colorRay :: World -> Int -> Point -> Ray3 -> Maybe HitRec -> Color
+colorRay w depth shpt (Ray3 (base,dir)) hrec =
+  case hrec of
+    Nothing -> Color 0 0 0
+    Just (HitRec (t,obj)) ->
+      let pt = add base (multiply dir t)
+          n = getNormal obj pt
+          v = vecM negate dir
+          ambient_c = wAmbient w
+          lights = wLights w
+          objs = wObjects w
+          {- Direct color - lambertian + blinn-phong from lights-}
+          direct_c = getDirectColor lights objs shpt ambient_c obj pt n v
+          {- Indirect color - reflection + refraction -}
+          indirect_c = getIndirectColor w depth shpt dir pt n obj
+      in mixColors (+) direct_c indirect_c
+{-# INLINABLE colorRay #-}
+
+--TODO frustum bounds for depth of field rays
+{- return packet of rays and list of shadow points for soft shadows -}
+getRayPacket :: World -> (Point,([[Point]],(Grid,Grid))) -> (Packet,[Point])
+getRayPacket w ((i,j),(rrs,(pts,sh_grid))) = (Packet frustum rays,sh_pts)
+  where
+    (rays,sh_pts) = unzip rays0
+    rays0 = concatMap (\(rs,(p,q),rfts) -> 
+              map (\r -> (getRay w (i+p,j+q) r,rfts)) rs)
+              (zip3 rrs pts sh_grid)
+    Ray3 (_,lowerL) = getRay w (i,j) (0,0)
+    Ray3 (_,upperL) = getRay w (i,j+1) (0,0)
+    Ray3 (_,upperR) = getRay w (i+1,j+1) (0,0)
+    Ray3 (_,lowerR) = getRay w (i+1,j) (0,0)
+    topN = normalize (cross upperR upperL)
+    leftN = normalize (cross upperL lowerL)
+    botN = normalize (cross lowerL lowerR)
+    rightN = normalize (cross lowerR upperR)
+    tOfst = dot (wEye w) topN
+    bOfst = dot (wEye w) botN
+    lOfst = dot (wEye w) leftN
+    rOfst = dot (wEye w) rightN
+    frustum = Frustum bOfst tOfst lOfst rOfst botN topN leftN rightN
+{-# INLINABLE getRayPacket #-}
+        
+    
 --TODO clean up zipping and unzipping
 colorPixel :: World -> (Point,([[Point]],(Grid,Grid))) -> Color
 colorPixel w ((i,j),(rrs,(pts,sh_grid))) = avgColors cs where
@@ -268,6 +335,70 @@ data Light = Light !Vec3  --a corner of the light
                    deriving (Eq,Show,Read)
 
 
+{- triangle calculation using barycentric coordinates and projection method
+- from http://www.sci.utah.edu/~wald/PhD/wald_phd.pdf
+- TODO many of these can be precomputed
+- as of now benchmarks show no significant difference
+- AND is not working, lots of non-integers showing up in image
+- -}
+hit2 :: Vec3 -> Vec3 -> Object -> Maybe Float
+hit2 base dir (Sphere center radius _) = 
+  let ec = subt base center
+      dec = dot dir ec
+      dirdir = dot dir dir
+      ecec = dot ec ec
+      discriminant = dec*dec - dirdir*(ecec - radius*radius)
+      disc_val = sqrt discriminant
+      neg_dir = multiply dir (-1.0)
+      neg_dir_ec = dot neg_dir ec
+      t_a = (neg_dir_ec + disc_val) / dirdir
+      t_b = (neg_dir_ec - disc_val) / dirdir
+      t = min t_a t_b
+  in if discriminant > 0 && t > epsilon then Just t
+                                        else Nothing
+hit2 base dir (Triangle ta tb tc tn _) 
+  | dist < epsilon || beta < 0 || gamma < 0 || beta + gamma > 1 = Nothing
+  | otherwise = Just dist
+  where
+    b = subt tc ta
+    c = subt tb ta
+    n@(Vec3 nx ny nz) = cross c b
+    dist = negate (dot (subt base ta) n) / dot dir n
+    axis | abs nx > abs ny && abs nx > abs nz = XAxis
+         | abs ny > abs nx && abs ny > abs nz = YAxis
+         | otherwise = ZAxis
+    uaxis = nextAxis axis 1
+    vaxis = nextAxis axis 2
+    pu = axisV base uaxis + dist * axisV dir uaxis - axisV ta uaxis
+    pv = axisV base vaxis + dist * axisV dir vaxis - axisV ta vaxis
+    bu = axisV b uaxis
+    bv = axisV b vaxis
+    cu = axisV c uaxis
+    cv = axisV c vaxis
+    beta = (bu * pv - bv * pu) / (bu * cv - bv * cu)
+    gamma = (cv * pu - cu * pv) / (bu * cv - bv * cu)
+{-# INLINABLE hit2 #-}
+
+axisV :: Vec3 -> Axis -> Float
+axisV (Vec3 x y z) axis = case axis of
+                            XAxis -> x
+                            YAxis -> y
+                            ZAxis -> z
+{-# INLINABLE axisV #-}
+  
+nextAxis :: Axis -> Int -> Axis
+nextAxis axis i = case (axis,i) of
+                 (XAxis,1) -> YAxis
+                 (XAxis,2) -> ZAxis
+                 (YAxis,1) -> ZAxis
+                 (YAxis,2) -> XAxis
+                 (ZAxis,1) -> XAxis
+                 (ZAxis,2) -> YAxis
+                 (a,0)     -> a
+                 (_,_)     -> error "next out of bounds"
+{-# INLINABLE nextAxis #-}
+  
+
 {- faster than distance, I think because it it because dot products are
 - faster than add/subt becuase no need to rebox -}
 hit :: Vec3 -> Vec3 -> Object -> Maybe Float
@@ -345,6 +476,38 @@ hitBVH ray (Node left right box)
   | hitsBox ray box = max (hitBVH ray left) (hitBVH ray right)
   | otherwise = Nothing
 {-# INLINABLE hitBVH #-}
+
+{- a frustum culls a box when all of boxes vertices lie outside of the same
+- side plane -}
+frustumHitsBox :: Frustum -> Box -> Bool
+frustumHitsBox fr box = bb && bt && bl && br
+  where
+    vs = toVertices box
+    bb = any (> 0) (map (\p -> dot (fBotN fr) p - fBotOffset fr) vs)
+    bt = any (> 0) (map (\p -> dot (fTopN fr) p - fTopOffset fr) vs)
+    bl = any (> 0) (map (\p -> dot (fLeftN fr) p - fLeftOffset fr) vs)
+    br = any (> 0) (map (\p -> dot (fRightN fr) p - fRightOffset fr) vs)
+{-# INLINABLE frustumHitsBox #-}
+    
+{- naive packet traversal -}
+pHitBVH :: Packet -> BVH -> [Maybe HitRec]
+pHitBVH (Packet _ rays) Empty = replicate (length rays) Nothing
+pHitBVH p@(Packet frustum rays) (Leaf os box)
+  | frustumHitsBox frustum box = map (`hits` os) rays
+  | otherwise = replicate (length rays) Nothing
+pHitBVH p@(Packet frustum rays) (Node left right box)
+  | frustumHitsBox frustum box = zipWith max (pHitBVH p left) (pHitBVH p right)
+  | otherwise = replicate (length rays) Nothing
+{-# INLINABLE pHitBVH #-}
+
+{- ranged traversal of bvh by a packet -}
+rangedTraverse :: Packet -> BVH -> [Maybe HitRec]
+rangedTraverse = undefined
+
+{- partition traversal of bvh -}
+partitionTraversal :: Packet -> BVH -> [Maybe HitRec]
+partitionTraversal = undefined
+    
 
 badColor :: Color -> Bool
 badColor (Color r g b) = any isNaN [r,g,b]

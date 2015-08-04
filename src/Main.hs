@@ -7,6 +7,7 @@ import BenchmarkScene4
 import BenchmarkScene5
 import Geometry3
 import BoundingVolumeHierarchy
+import Materials
 import Objects
 import Surfaces
 import RayTracer
@@ -24,8 +25,6 @@ import Options.Applicative
 import Debug.Trace
 
 {- 
-- TODO artifacts caused bc rays appear to think they are hitting triangles
-- behind the correct triangles
 - TODO scene file parsing
 - TODO light dissapation
 - TODO texture mapping
@@ -44,14 +43,15 @@ main = execParser opts >>= run
 
 run :: Config -> IO ()
 run _ = do 
-  let c = bench6Config
+  let c = bench1Config
   objs <- case cScene c of
             Nothing -> return []
             Just fname -> do ms <- parseObj fname
                              case ms of
                                Left e -> error (show e)
                                Right mesh -> return $ fromMesh (convertMesh mesh)
-  let w = bench6World objs
+  --let w = bench6World objs
+  let w = bench1World
   rng <- newPureMT
   let rs = chunksOf (wAntiAliasing w) (chunksOf (wDOF w) (randomPairs rng))
   let grids = generateGrids rng (cImageWidth c + 10) (wAntiAliasing w)
@@ -156,7 +156,7 @@ configToWorld c objs lights =
           , wEye = cEye c
           , wCamera = getCam (cEye c) (cLookAt c) (cUp c)
           , wObjects = sahBVH objs
-          , wAmbient = Color 0.3 0.3 0.3
+          , wAmbient = Color 0.1 0.1 0.1
           , wLights = lights
           , wMaxDepth = cReflectionDepth c
           }
@@ -212,7 +212,7 @@ convertMaterial m =
     1  -> makeMaterial dC    xx     0 0    0 xx
     2  -> makeMaterial dC    sC phong 0    0 xx
     3  -> makeMaterial dC    sC phong 1    0 opaque
-    4  -> makeMaterial dC    sC phong 0 refr opaque
+    4  -> makeMaterial dC    sC phong 0 refr white
     5  -> makeMaterial dC    sC phong 1    0 opaque
     6  -> makeMaterial dC    sC phong 1 refr opaque
     7  -> makeMaterial dC    sC phong 1 refr opaque
@@ -263,8 +263,17 @@ writePPM name w h pixels = writeFile name txt  where
   txt = "P3\n" ++ show w ++ " " ++ show h ++
         " 255\n" ++ f pixels
 
-
-
+{- for using the repl -}
+scene1C :: Config
+scene1C = Config 800 600 8 6 7 6 25 1 0 (Vec3 0 1 0) (Vec3 10 0 0) (Vec3 0 0 0) Nothing
+scene1W :: World
+scene1W = configToWorld scene1C [ Sphere (Vec3 0 0 0) 1 redM ] bench1Lights
+{-
+rng_ = newPureMT
+rs_ = chunksOf (wAntiAliasing scene1W) (chunksOf (wDOF scene1W) (randomPairs rng_))
+grids_ = generateGrids rng_ (cImageWidth scene1C + 10) (wAntiAliasing scene1W)
+randoms_ = zip rs_ grids_
+-}
 bench1Config :: Config
 bench1Config = Config 800 600
                      8 6 7
@@ -313,8 +322,8 @@ bench3World = configToWorld bench3Config bench3Objects bench3Lights
 
 --depth of field example
 bench4Config :: Config
-bench4Config = Config 1600 900 
-                      16 12 14
+bench4Config = Config 800 600 
+                      8 6 7
                       6
                       64
                       25
@@ -329,8 +338,8 @@ bench4World = configToWorld bench4Config bench4Objects bench4Lights
 
 --glossy example
 bench5Config :: Config
-bench5Config = Config 1600 900 
-                      16 9 10
+bench5Config = Config 800 600 
+                      8 6 7
                       6
                       64
                       1
@@ -345,16 +354,17 @@ bench5World = configToWorld bench5Config bench5Objects bench5Lights
 
 --scene parsing example
 bench6Config :: Config
-bench6Config = Config 1600 900 
-                      16 9 18
+bench6Config = Config 800 600 
+                      8 6 8
                       6
-                      1
+                      64
                       1
                       0.0
                       (Vec3 0 1 0)
-                      (Vec3 20 12 20)
+                      (Vec3 5 2 5)
+                      --(Vec3 18 12 18)
                       (Vec3 0 0 0)
-                      (Just "station.obj")
+                      (Just "br-ship.obj")
 
 bench6World :: [Object] -> World
 bench6World objs = configToWorld bench6Config objs

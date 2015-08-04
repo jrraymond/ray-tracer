@@ -16,6 +16,11 @@ data Box = Box { boxXmin  :: !Float
                , boxZmax  :: !Float }
          | EmptyBox deriving (Eq,Show,Read)
 
+toVertices :: Box -> [Vec3]
+toVertices EmptyBox = []
+toVertices (Box l r b t n f) = [ Vec3 x y z | x <- [l,r], y <- [b,t], z <- [n,f] ]
+{-# INLINABLE toVertices #-}
+
 
 {- Bounding Volume Hierarchy -}
 data BVH = Node !BVH !BVH !Box 
