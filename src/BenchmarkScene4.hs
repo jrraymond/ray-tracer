@@ -11,8 +11,8 @@ import RayTracer
 
 bench4Lights :: [Light]
 bench4Lights = [Light (Vec3 20 20 (-20))
-                      (Vec3 0 1 0)
-                      (Vec3 0 0 1)
+                      (Vec3 (-1) 1 1)
+                      (Vec3 4 0 1)
                       (Color 0.8 0.8 0.8) ]
 
 b4t0 :: Vec3

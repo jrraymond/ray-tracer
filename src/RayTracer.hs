@@ -47,8 +47,8 @@ render :: [([[Point]],(Grid,Grid))] -> World -> [Color]
 render grids world = cs where 
   ps = [ (i,j) | j <- reverse [0..wImgHt world - 1] , i <- [0..wImgWd world - 1] ]
   --cs = withStrategy (parBuffer 1000 rdeepseq) $ map (raytrace world (maxDepth world) . getRay world) ps
-  --cs = map (colorPixel world) (zip ps grids)
-  cs = map (colorPacket world . getRayPacket world) (zip ps grids)
+  cs = map (colorPixel world) (zip ps grids)
+  --cs = map (colorPacket world . getRayPacket world) (zip ps grids)
 
 colorPacket :: World -> (Packet,[Point]) -> Color
 colorPacket w (packet@(Packet _ rays),shpts) = avgColors colors

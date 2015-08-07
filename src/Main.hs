@@ -43,7 +43,7 @@ main = execParser opts >>= run
 
 run :: Config -> IO ()
 run _ = do 
-  let c = bench1Config
+  let c = bench4Config
   objs <- case cScene c of
             Nothing -> return []
             Just fname -> do ms <- parseObj fname
@@ -51,7 +51,7 @@ run _ = do
                                Left e -> error (show e)
                                Right mesh -> return $ fromMesh (convertMesh mesh)
   --let w = bench6World objs
-  let w = bench1World
+  let w = bench4World
   rng <- newPureMT
   let rs = chunksOf (wAntiAliasing w) (chunksOf (wDOF w) (randomPairs rng))
   let grids = generateGrids rng (cImageWidth c + 10) (wAntiAliasing w)
@@ -322,12 +322,12 @@ bench3World = configToWorld bench3Config bench3Objects bench3Lights
 
 --depth of field example
 bench4Config :: Config
-bench4Config = Config 800 600 
-                      8 6 7
-                      6
-                      64
-                      25
-                      0.10
+bench4Config = Config 3200 1800 --800 600
+                      16 9 10 --8 6 7
+                      10 --6
+                      625 --64
+                      25 --25
+                      0.05 --0.10
                       (Vec3 0 1 0)
                       (Vec3 50 5 0)
                       (Vec3 0 0 0)
