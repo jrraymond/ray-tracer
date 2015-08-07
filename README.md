@@ -13,9 +13,11 @@ Features:
 
 Images:
 
-![Station](https://github.com/jrraymond/ray-tracer/blob/master/images/station.png)
-
-
-Glossy Reflections:
-
+Glossy Reflections:  
 ![Glossy](https://github.com/jrraymond/ray-tracer/blob/master/images/glossy_reflections.png)
+
+Depth of Field:  
+![DOF](https://github.com/jrraymond/ray-tracer/blob/master/images/depthoffield.png)
+
+Reflections and refractions:  
+![Station](https://github.com/jrraymond/ray-tracer/blob/master/images/station.png)
