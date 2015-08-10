@@ -56,7 +56,7 @@ colorPacket w (packet@(Packet _ rays),shpts) = avgColors colors
     d = wMaxDepth w
     hrecs = pHitBVH packet (wObjects w)
     colors = zipWith3 (colorRay w d) shpts rays hrecs
-{-# INLINABLE colorPacket #-}
+{-# INLINE colorPacket #-}
 
 colorRay :: World -> Int -> Point -> Ray3 -> Maybe HitRec -> Color
 colorRay w depth shpt (Ray3 (base,dir)) hrec =
@@ -74,7 +74,7 @@ colorRay w depth shpt (Ray3 (base,dir)) hrec =
           {- Indirect color - reflection + refraction -}
           indirect_c = getIndirectColor w depth shpt dir pt n obj
       in mixColors (+) direct_c indirect_c
-{-# INLINABLE colorRay #-}
+{-# INLINE colorRay #-}
 
 --TODO frustum bounds for depth of field rays
 {- return packet of rays and list of shadow points for soft shadows -}
@@ -98,7 +98,7 @@ getRayPacket w ((i,j),(rrs,(pts,sh_grid))) = (Packet frustum rays,sh_pts)
     lOfst = dot (wEye w) leftN
     rOfst = dot (wEye w) rightN
     frustum = Frustum bOfst tOfst lOfst rOfst botN topN leftN rightN
-{-# INLINABLE getRayPacket #-}
+{-# INLINE getRayPacket #-}
         
     
 --TODO clean up zipping and unzipping
@@ -259,7 +259,7 @@ getRay world (i,j) (r1,r2) = ray where
   dir = add w_dir (add u_dir v_dir)
   fdir = subt (add dir eye) base
   ray = Ray3 (base,normalize fdir)
-{-# INLINABLE getRay #-}
+{-# INLINE getRay #-}
 
 {- dimension of grid -}
 getGrid :: Int -> Grid
@@ -377,14 +377,14 @@ hit2 base dir (Triangle ta tb tc tn _)
     cv = axisV c vaxis
     beta = (bu * pv - bv * pu) / (bu * cv - bv * cu)
     gamma = (cv * pu - cu * pv) / (bu * cv - bv * cu)
-{-# INLINABLE hit2 #-}
+{-# INLINE hit2 #-}
 
 axisV :: Vec3 -> Axis -> Float
 axisV (Vec3 x y z) axis = case axis of
                             XAxis -> x
                             YAxis -> y
                             ZAxis -> z
-{-# INLINABLE axisV #-}
+{-# INLINE axisV #-}
   
 nextAxis :: Axis -> Int -> Axis
 nextAxis axis i = case (axis,i) of
@@ -396,7 +396,7 @@ nextAxis axis i = case (axis,i) of
                  (ZAxis,2) -> YAxis
                  (a,0)     -> a
                  (_,_)     -> error "next out of bounds"
-{-# INLINABLE nextAxis #-}
+{-# INLINE nextAxis #-}
   
 
 {- faster than distance, I think because it it because dot products are
@@ -465,7 +465,7 @@ hits (Ray3 (base,dir)) = go0
                          Just t' 
                             | t' < t    -> go1 t' o os
                             | otherwise -> go1 t obj os
-{-# INLINABLE hits #-}
+{-# INLINE hits #-}
 
 hitBVH :: Ray3 -> BVH -> Maybe HitRec
 hitBVH _ Empty = Nothing
@@ -475,7 +475,7 @@ hitBVH ray (Leaf os box)
 hitBVH ray (Node left right box) 
   | hitsBox ray box = max (hitBVH ray left) (hitBVH ray right)
   | otherwise = Nothing
-{-# INLINABLE hitBVH #-}
+{-# INLINE hitBVH #-}
 
 {- a frustum culls a box when all of boxes vertices lie outside of the same
 - side plane -}
@@ -487,7 +487,7 @@ frustumHitsBox fr box = bb && bt && bl && br
     bt = any (> 0) (map (\p -> dot (fTopN fr) p - fTopOffset fr) vs)
     bl = any (> 0) (map (\p -> dot (fLeftN fr) p - fLeftOffset fr) vs)
     br = any (> 0) (map (\p -> dot (fRightN fr) p - fRightOffset fr) vs)
-{-# INLINABLE frustumHitsBox #-}
+{-# INLINE frustumHitsBox #-}
     
 {- naive packet traversal -}
 pHitBVH :: Packet -> BVH -> [Maybe HitRec]
@@ -498,7 +498,7 @@ pHitBVH p@(Packet frustum rays) (Leaf os box)
 pHitBVH p@(Packet frustum rays) (Node left right box)
   | frustumHitsBox frustum box = zipWith max (pHitBVH p left) (pHitBVH p right)
   | otherwise = replicate (length rays) Nothing
-{-# INLINABLE pHitBVH #-}
+{-# INLINE pHitBVH #-}
 
 {- ranged traversal of bvh by a packet -}
 rangedTraverse :: Packet -> BVH -> [Maybe HitRec]
@@ -522,4 +522,4 @@ orthonormal w = let t | w == Vec3 1 0 0 = Vec3 0 1 0
                     u = normalize (cross t w)
                     v = cross w u
                 in (u,v)
-{-# INLINABLE orthonormal #-}
+{-# INLINE orthonormal #-}
