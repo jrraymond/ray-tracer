@@ -43,15 +43,15 @@ main = execParser opts >>= run
 
 run :: Config -> IO ()
 run _ = do 
-  let c = bench4Config
+  let c = bench6Config
   objs <- case cScene c of
             Nothing -> return []
             Just fname -> do ms <- parseObj fname
                              case ms of
                                Left e -> error (show e)
                                Right mesh -> return $ fromMesh (convertMesh mesh)
-  --let w = bench6World objs
-  let w = bench4World
+  let w = bench6World objs
+  --let w = bench4World
   rng <- newPureMT
   let rs = chunksOf (wAntiAliasing w) (chunksOf (wDOF w) (randomPairs rng))
   let grids = generateGrids rng (cImageWidth c + 10) (wAntiAliasing w)
