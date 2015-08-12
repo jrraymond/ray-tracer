@@ -356,15 +356,15 @@ bench5World = configToWorld bench5Config bench5Objects bench5Lights
 bench6Config :: Config
 bench6Config = Config 800 600 
                       8 6 8
-                      6
-                      64
+                      4
+                      25
                       1
                       0.0
                       (Vec3 0 1 0)
-                      (Vec3 5 2 5)
-                      --(Vec3 18 12 18)
+                      --(Vec3 5 2 5)
+                      (Vec3 18 12 18)
                       (Vec3 0 0 0)
-                      (Just "br-ship.obj")
+                      (Just "station.obj")
 
 bench6World :: [Object] -> World
 bench6World objs = configToWorld bench6Config objs
