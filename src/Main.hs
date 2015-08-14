@@ -21,10 +21,6 @@ import Options.Applicative
 - TODO light dissapation
 - TODO texture mapping
 - TODO triangle meshes
-- TODO glossy reflection - DONE but I think it could be improved:
--   1) I use phong exp to determine glossy reflection, is this ok?
--   2) the is another method that I'd like to try that sounds fancy and has
--   the words monte-carlo in it
 -}
 
 main :: IO ()
@@ -35,15 +31,15 @@ main = execParser opts >>= run
 
 run :: Config -> IO ()
 run _ = do 
-  let c = bench6Config
+  let c = bench4Config
   objs <- case cScene c of
             Nothing -> return []
             Just fname -> do ms <- parseObj fname
                              case ms of
                                Left e -> error (show e)
                                Right mesh -> return $ fromMesh (convertMesh mesh)
-  let w = bench6World objs
-  --let w = bench4World
+  --let w = bench6World objs
+  let w = bench4World
   rng <- newPureMT
   let img = render rng w
   putStrLn "rendering . . ."
@@ -204,12 +200,12 @@ bench3World = configToWorld bench3Config bench3Objects bench3Lights
 
 --depth of field example
 bench4Config :: Config
-bench4Config = Config 3200 1800 --800 600
-                      16 9 10 --8 6 7
-                      10 --6
-                      625 --64
+bench4Config = Config 800 600 --3200 1800
+                      8 6 7 -- 16 9 10
+                      6 --10 --6
+                      25 --64
                       25 --25
-                      0.05 --0.10
+                      0.025
                       (Vec3 0 1 0)
                       (Vec3 50 5 0)
                       (Vec3 0 0 0)

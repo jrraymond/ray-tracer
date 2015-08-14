@@ -23,66 +23,17 @@ render rng w = cs where
   cs = map (colorPixel w) (zip3 ps rs grids)
   --cs = withStrategy (parBuffer 1000 rdeepseq) $ map (raytrace world (maxDepth world) . getRay world) ps
   --cs = map (colorPacket world . getRayPacket world) (zip ps grids)
-
-colorPacket :: World -> (Packet,[Point]) -> Color
-colorPacket w (packet@(Packet _ rays),shpts) = avgColors colors
-  where
-    d = wMaxDepth w
-    hrecs = pHitBVH packet (wObjects w)
-    colors = zipWith3 (colorRay w d) shpts rays hrecs
-{-# INLINE colorPacket #-}
-
-colorRay :: World -> Int -> Point -> Ray3 -> Maybe HitRec -> Color
-colorRay w depth shpt (Ray3 (base,dir)) hrec =
-  case hrec of
-    Nothing -> Color 0 0 0
-    Just (HitRec (t,obj)) ->
-      let pt = add base (multiply dir t)
-          n = getNormal obj pt
-          v = vecM negate dir
-          ambient_c = wAmbient w
-          lights = wLights w
-          objs = wObjects w
-          {- Direct color - lambertian + blinn-phong from lights-}
-          direct_c = getDirectColor lights objs shpt ambient_c obj pt n v
-          {- Indirect color - reflection + refraction -}
-          indirect_c = getIndirectColor w depth shpt dir pt n obj
-      in mixColors (+) direct_c indirect_c
-{-# INLINE colorRay #-}
-
---TODO frustum bounds for depth of field rays
-{- return packet of rays and list of shadow points for soft shadows -}
-getRayPacket :: World -> (Point,([[Point]],(Grid,Grid))) -> (Packet,[Point])
-getRayPacket w ((i,j),(rrs,(pts,sh_grid))) = (Packet frustum rays,sh_pts)
-  where
-    (rays,sh_pts) = unzip rays0
-    rays0 = concatMap (\(rs,(p,q),rfts) -> 
-              map (\r -> (getRay w (i+p,j+q) r,rfts)) rs)
-              (zip3 rrs pts sh_grid)
-    Ray3 (_,lowerL) = getRay w (i,j) (0,0)
-    Ray3 (_,upperL) = getRay w (i,j+1) (0,0)
-    Ray3 (_,upperR) = getRay w (i+1,j+1) (0,0)
-    Ray3 (_,lowerR) = getRay w (i+1,j) (0,0)
-    topN = normalize (cross upperR upperL)
-    leftN = normalize (cross upperL lowerL)
-    botN = normalize (cross lowerL lowerR)
-    rightN = normalize (cross lowerR upperR)
-    tOfst = dot (wEye w) topN
-    bOfst = dot (wEye w) botN
-    lOfst = dot (wEye w) leftN
-    rOfst = dot (wEye w) rightN
-    frustum = Frustum bOfst tOfst lOfst rOfst botN topN leftN rightN
-{-# INLINE getRayPacket #-}
-        
     
 --TODO clean up zipping and unzipping
 colorPixel :: World -> (Point,[[Point]],(Grid,Grid)) -> Color
 colorPixel w ((i,j),rrs,(pts,sh_grid)) = avgColors cs where
   d = wMaxDepth w
-  cs = map (\(rs,(p,q),rfts) -> let rays = map (getRay w (i+p,j+q)) rs
-                                    cs0 = map (raytrace w d rfts) rays
-                                in avgColors cs0)
-           (zip3 rrs pts sh_grid)
+  rs = head rrs
+  cs = map (\(rr,(p,q),rfts) -> raytrace w d rfts (getRay w (i+p,j+q) rr)) (zip3 rs pts sh_grid)
+  --cs = map (\(rs,(p,q),rfts) -> let rays = map (getRay w (i+p,j+q)) rs
+  --                                  cs0 = map (raytrace w d rfts) rays
+  --                              in avgColors cs0)
+  --         (zip3 rrs pts sh_grid)
 {-# INLINE colorPixel #-}
 
 
@@ -513,3 +464,54 @@ randomPairs rng = let (a,rng') = first double2Float (randomDouble rng)
                       (b,rng'') = first double2Float (randomDouble rng')
                   in (a,b) : randomPairs rng''
 
+{- packets -}
+colorPacket :: World -> (Packet,[Point]) -> Color
+colorPacket w (packet@(Packet _ rays),shpts) = avgColors colors
+  where
+    d = wMaxDepth w
+    hrecs = pHitBVH packet (wObjects w)
+    colors = zipWith3 (colorRay w d) shpts rays hrecs
+{-# INLINE colorPacket #-}
+
+colorRay :: World -> Int -> Point -> Ray3 -> Maybe HitRec -> Color
+colorRay w depth shpt (Ray3 (base,dir)) hrec =
+  case hrec of
+    Nothing -> Color 0 0 0
+    Just (HitRec (t,obj)) ->
+      let pt = add base (multiply dir t)
+          n = getNormal obj pt
+          v = vecM negate dir
+          ambient_c = wAmbient w
+          lights = wLights w
+          objs = wObjects w
+          {- Direct color - lambertian + blinn-phong from lights-}
+          direct_c = getDirectColor lights objs shpt ambient_c obj pt n v
+          {- Indirect color - reflection + refraction -}
+          indirect_c = getIndirectColor w depth shpt dir pt n obj
+      in mixColors (+) direct_c indirect_c
+{-# INLINE colorRay #-}
+
+--TODO frustum bounds for depth of field rays
+{- return packet of rays and list of shadow points for soft shadows -}
+getRayPacket :: World -> (Point,([[Point]],(Grid,Grid))) -> (Packet,[Point])
+getRayPacket w ((i,j),(rrs,(pts,sh_grid))) = (Packet frustum rays,sh_pts)
+  where
+    (rays,sh_pts) = unzip rays0
+    rays0 = concatMap (\(rs,(p,q),rfts) -> 
+              map (\r -> (getRay w (i+p,j+q) r,rfts)) rs)
+              (zip3 rrs pts sh_grid)
+    Ray3 (_,lowerL) = getRay w (i,j) (0,0)
+    Ray3 (_,upperL) = getRay w (i,j+1) (0,0)
+    Ray3 (_,upperR) = getRay w (i+1,j+1) (0,0)
+    Ray3 (_,lowerR) = getRay w (i+1,j) (0,0)
+    topN = normalize (cross upperR upperL)
+    leftN = normalize (cross upperL lowerL)
+    botN = normalize (cross lowerL lowerR)
+    rightN = normalize (cross lowerR upperR)
+    tOfst = dot (wEye w) topN
+    bOfst = dot (wEye w) botN
+    lOfst = dot (wEye w) leftN
+    rOfst = dot (wEye w) rightN
+    frustum = Frustum bOfst tOfst lOfst rOfst botN topN leftN rightN
+{-# INLINE getRayPacket #-}
+        
