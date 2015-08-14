@@ -1,47 +1,8 @@
-{-# LANGUAGE MultiParamTypeClasses, TemplateHaskell, TypeFamilies,GeneralizedNewtypeDeriving, FlexibleInstances #-}
 module Objects where
 
 import Geometry3
-import Surfaces
-import qualified Data.Vector.Unboxed as U
-import Data.Vector.Unboxed.Deriving
+import Types
 
-
-
-data Vertex = Vertex { vVertex   :: !Int
-                     , vTexture  :: !Int
-                     , vNormal   :: !Int 
-                     } deriving (Eq,Show,Read)
-
---3 vertex indeces and material index
-data TriFace = TriFace !Vertex !Vertex !Vertex !Int deriving (Eq,Read,Show)
-
-derivingUnbox "Vertex"
-  [t| Vertex -> (Int,Int,Int) |]
-  [| \ (Vertex x y z) -> (x,y,z) |]
-  [| \ (x,y,z) -> Vertex x y z |] 
-
-derivingUnbox "TriFace"
-  [t| TriFace -> (Vertex,Vertex,Vertex,Int) |]
-  [| \ (TriFace w x y z) -> (w,x,y,z) |]
-  [| \ (w,x,y,z) -> TriFace w x y z |] 
-
-data Mesh = Mesh { meshVertices :: U.Vector Vec3
-                 , meshNormals :: U.Vector Vec3
-                 , meshMaterials :: U.Vector Material
-                 , meshTriFaces :: U.Vector TriFace
-                 } deriving (Eq,Read,Show)
-
-data Object = Sphere { spherePos :: !Vec3
-                     , sphereRad :: !Float
-                     , sphereMat :: !Material }
-            
-            | Triangle { triangleA :: !Vec3 --three points
-                       , triangleB :: !Vec3
-                       , triangleC :: !Vec3
-                       , triangleN :: !Vec3 --normal
-                       , triangleMat :: !Material }
-  deriving (Eq, Show, Read)
 
 printObj :: Object -> String
 printObj (Sphere c r _) = "Sphere " ++ show c ++ " " ++ show r

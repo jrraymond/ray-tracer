@@ -2,12 +2,9 @@ module BenchmarkScene4 where
 
 {- A scene to highlight depth of field -}
 
-
-import Geometry3
+import Types
 import Objects
 import Materials
-import Surfaces
-import RayTracer
 
 bench4Lights :: [Light]
 bench4Lights = [Light (Vec3 20 20 (-20))

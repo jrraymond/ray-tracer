@@ -2,11 +2,9 @@ module BenchmarkScene5 where
 
 {- A scene to highlight glossy reflection -}
 
-import Geometry3
 import Objects
 import Materials
-import Surfaces
-import RayTracer
+import Types
 
 bench5Lights :: [Light]
 bench5Lights = [Light (Vec3 20 0 0)

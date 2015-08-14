@@ -1,5 +1,6 @@
 module Materials where
 
+import Types
 import Surfaces
 
 purple :: Color

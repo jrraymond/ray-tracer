@@ -2,52 +2,26 @@
 module RayTracer where
 
 import Geometry3
-import Objects
 import Surfaces
 import BoundingVolumeHierarchy
+import Types
+
+import Control.Arrow (first)
+import GHC.Float (double2Float)
+import System.Random (next)
+import System.Random.Mersenne.Pure64 (PureMT, randomDouble)
+import System.Random.Shuffle (shuffle')
 
 
-data World = World { wImgWd :: Float
-                   , wImgHt :: Float
-                   , wViewWd :: Float
-                   , wViewHt :: Float
-                   , wViewDt :: Float
-                   , wAntiAliasing :: Int --sqrt of number of rays to cast
-                   , wDOF :: Int --number of rays for depth of field
-                   , wLens :: Float --length of side of lens (0 for pinhole)
-                   , wUp :: Vec3
-                   , wEye :: Vec3
-                   , wCamera :: (Vec3,Vec3,Vec3)
-                   , wObjects :: !BVH
-                   , wAmbient :: Color
-                   , wLights :: [Light]
-                   , wMaxDepth :: Int
-                   } deriving Show
-type Point3 = Vec3
-type Point = (Float,Float)
-type Grid = [Point]
-{- Hessian normal form: 
--   dot n x = b where n is normal and b is offset
--   distance = dot n x - b
--}
-data Frustum = Frustum { fBotOffset   :: !Float
-                       , fTopOffset   :: !Float
-                       , fLeftOffset  :: !Float
-                       , fRightOffset :: !Float
-                       , fBotN        :: !Vec3
-                       , fTopN        :: !Vec3
-                       , fLeftN       :: !Vec3
-                       , fRightN      :: !Vec3
-                       } deriving (Eq,Read,Show)
-
-data Packet = Packet !Frustum [Ray3] deriving (Eq,Read,Show)
 
 {- jittered grids, world -}
-render :: [([[Point]],(Grid,Grid))] -> World -> [Color]
-render grids world = cs where 
-  ps = [ (i,j) | j <- reverse [0..wImgHt world - 1] , i <- [0..wImgWd world - 1] ]
+render :: PureMT -> World -> [Color]
+render rng w = cs where
+  rs = chunksOf (wAntiAliasing w) (chunksOf (wDOF w) (randomPairs rng))
+  grids = generateGrids rng (round (wImgWd w) + 10) (wAntiAliasing w)
+  ps = [ (i,j) | j <- reverse [0..wImgHt w - 1] , i <- [0..wImgWd w - 1] ]
+  cs = map (colorPixel w) (zip3 ps rs grids)
   --cs = withStrategy (parBuffer 1000 rdeepseq) $ map (raytrace world (maxDepth world) . getRay world) ps
-  cs = map (colorPixel world) (zip ps grids)
   --cs = map (colorPacket world . getRayPacket world) (zip ps grids)
 
 colorPacket :: World -> (Packet,[Point]) -> Color
@@ -102,13 +76,13 @@ getRayPacket w ((i,j),(rrs,(pts,sh_grid))) = (Packet frustum rays,sh_pts)
         
     
 --TODO clean up zipping and unzipping
-colorPixel :: World -> (Point,([[Point]],(Grid,Grid))) -> Color
-colorPixel w ((i,j),(rrs,(pts,sh_grid))) = avgColors cs where
+colorPixel :: World -> (Point,[[Point]],(Grid,Grid)) -> Color
+colorPixel w ((i,j),rrs,(pts,sh_grid)) = avgColors cs where
   d = wMaxDepth w
   cs = map (\(rs,(p,q),rfts) -> let rays = map (getRay w (i+p,j+q)) rs
                                     cs0 = map (raytrace w d rfts) rays
                                 in avgColors cs0)
-                                (zip3 rrs pts sh_grid)
+           (zip3 rrs pts sh_grid)
 {-# INLINE colorPixel #-}
 
 
@@ -326,15 +300,6 @@ attenuation (Triangle _ _ _ _ (Material _ _ _ _ _ c)) = c
 {-# INLINE attenuation #-}
 
 
-
-
-data Light = Light !Vec3  --a corner of the light
-                   !Vec3  --first edge of light
-                   !Vec3  --second edge of light
-                   !Color
-                   deriving (Eq,Show,Read)
-
-
 {- triangle calculation using barycentric coordinates and projection method
 - from http://www.sci.utah.edu/~wald/PhD/wald_phd.pdf
 - TODO many of these can be precomputed
@@ -523,3 +488,28 @@ orthonormal w = let t | w == Vec3 1 0 0 = Vec3 0 1 0
                     v = cross w u
                 in (u,v)
 {-# INLINE orthonormal #-}
+
+{- random number generator, cycle size, the dimension of the grid -}
+generateGrids :: PureMT -> Int -> Int -> [(Grid,Grid)]
+generateGrids rng num aa = cycle grids where
+  rngs = iterate (snd . System.Random.next) rng
+  rs = randomFloats rng
+  grids = take num (zipWith (getGridPair aa) rngs (chunksOf (2 * aa * aa) rs))
+
+
+{- n x n grid and shuffled grid -}
+getGridPair :: Int -> PureMT -> [Float] -> (Grid,Grid)
+getGridPair n rng rs = (grid,shuffled) where
+  grid = getGridR n rs
+  shuffled = shuffle' grid (n * n) rng
+
+
+randomFloats :: PureMT -> [Float]
+randomFloats rng = let (d,rng') = first double2Float (randomDouble rng)
+                   in d : randomFloats rng'
+
+randomPairs :: PureMT -> [(Float,Float)]
+randomPairs rng = let (a,rng') = first double2Float (randomDouble rng)
+                      (b,rng'') = first double2Float (randomDouble rng')
+                  in (a,b) : randomPairs rng''
+

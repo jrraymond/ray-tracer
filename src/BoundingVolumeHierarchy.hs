@@ -1,32 +1,16 @@
 module BoundingVolumeHierarchy where
 
-import Objects
 import Geometry3
+import Types
+
 import Data.List (foldl',sortOn,scanl',minimumBy,maximumBy)
 import Data.Ord (comparing)
-
-data Axis = XAxis | YAxis | ZAxis deriving (Eq,Read,Show)
-
-{- Bounding Box -}
-data Box = Box { boxXmin  :: !Float
-               , boxXmax  :: !Float
-               , boxYmin  :: !Float
-               , boxYmax  :: !Float
-               , boxZmin  :: !Float
-               , boxZmax  :: !Float }
-         | EmptyBox deriving (Eq,Show,Read)
 
 toVertices :: Box -> [Vec3]
 toVertices EmptyBox = []
 toVertices (Box l r b t n f) = [ Vec3 x y z | x <- [l,r], y <- [b,t], z <- [n,f] ]
 {-# INLINABLE toVertices #-}
 
-
-{- Bounding Volume Hierarchy -}
-data BVH = Node !BVH !BVH !Box 
-         | Leaf ![Object] !Box
-         | Empty
-         deriving (Eq,Show,Read)
 
 bvhBox :: BVH -> Box
 bvhBox (Node _ _ b) = b

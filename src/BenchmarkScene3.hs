@@ -1,10 +1,8 @@
 module BenchmarkScene3 where
 
-import RayTracer
-import Surfaces
+import Types
 import Materials
 import Objects
-import Geometry3
 
 bench3Lights :: [Light]
 bench3Lights = [Light (Vec3 25 0 25)
