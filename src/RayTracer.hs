@@ -17,23 +17,17 @@ import System.Random.Shuffle (shuffle')
 {- jittered grids, world -}
 render :: PureMT -> World -> [Color]
 render rng w = cs where
-  rs = chunksOf (wAntiAliasing w) (chunksOf (wDOF w) (randomPairs rng))
   grids = generateGrids rng (round (wImgWd w) + 10) (wAntiAliasing w)
   ps = [ (i,j) | j <- reverse [0..wImgHt w - 1] , i <- [0..wImgWd w - 1] ]
-  cs = map (colorPixel w) (zip3 ps rs grids)
+  cs = map (colorPixel w) (zip ps grids)
   --cs = withStrategy (parBuffer 1000 rdeepseq) $ map (raytrace world (maxDepth world) . getRay world) ps
   --cs = map (colorPacket world . getRayPacket world) (zip ps grids)
     
 --TODO clean up zipping and unzipping
-colorPixel :: World -> (Point,[[Point]],(Grid,Grid)) -> Color
-colorPixel w ((i,j),rrs,(pts,sh_grid)) = avgColors cs where
+colorPixel :: World -> (Point,(Grid,Grid,Grid)) -> Color
+colorPixel w ((i,j),(aa,dof,ss)) = avgColors cs where
   d = wMaxDepth w
-  rs = head rrs
-  cs = map (\(rr,(p,q),rfts) -> raytrace w d rfts (getRay w (i+p,j+q) rr)) (zip3 rs pts sh_grid)
-  --cs = map (\(rs,(p,q),rfts) -> let rays = map (getRay w (i+p,j+q)) rs
-  --                                  cs0 = map (raytrace w d rfts) rays
-  --                              in avgColors cs0)
-  --         (zip3 rrs pts sh_grid)
+  cs = map (\((p,q),re,rfts) -> raytrace w d rfts (getRay w (i+p,j+q) re)) (zip3 aa dof ss)
 {-# INLINE colorPixel #-}
 
 
@@ -441,18 +435,19 @@ orthonormal w = let t | w == Vec3 1 0 0 = Vec3 0 1 0
 {-# INLINE orthonormal #-}
 
 {- random number generator, cycle size, the dimension of the grid -}
-generateGrids :: PureMT -> Int -> Int -> [(Grid,Grid)]
+generateGrids :: PureMT -> Int -> Int -> [(Grid,Grid,Grid)]
 generateGrids rng num aa = cycle grids where
   rngs = iterate (snd . System.Random.next) rng
   rs = randomFloats rng
-  grids = take num (zipWith (getGridPair aa) rngs (chunksOf (2 * aa * aa) rs))
+  grids = take num (zipWith (getGrids aa) rngs (chunksOf (2 * aa * aa) rs))
 
 
-{- n x n grid and shuffled grid -}
-getGridPair :: Int -> PureMT -> [Float] -> (Grid,Grid)
-getGridPair n rng rs = (grid,shuffled) where
-  grid = getGridR n rs
-  shuffled = shuffle' grid (n * n) rng
+{- n x n grid and shuffled grids for depth of field and soft shadows -}
+getGrids :: Int -> PureMT -> [Float] -> (Grid,Grid,Grid)
+getGrids n rng rs = (aa,dof,ss) where
+  aa = getGridR n rs
+  dof = shuffle' aa (n * n) rng
+  ss = shuffle' dof (n * n) rng
 
 
 randomFloats :: PureMT -> [Float]
