@@ -105,6 +105,13 @@ data Light = Light !Vec3  --a corner of the light
                    !Color
                    deriving (Eq,Show,Read)
 
+data F6 = F6 {-# UNPACK #-} !Float
+             {-# UNPACK #-} !Float
+             {-# UNPACK #-} !Float
+             {-# UNPACK #-} !Float
+             {-# UNPACK #-} !Float
+             {-# UNPACK #-} !Float
+             deriving (Eq,Read,Show)
 
 {- Hessian normal form: 
 -   dot n x = b where n is normal and b is offset

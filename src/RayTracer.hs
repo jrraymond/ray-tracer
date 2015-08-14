@@ -24,17 +24,17 @@ render rng w = cs where
   --cs = map (colorPacket world . getRayPacket world) (zip ps grids)
     
 --TODO clean up zipping and unzipping
-colorPixel :: World -> (Point,(Grid,Grid,Grid)) -> Color
-colorPixel w ((i,j),(aa,dof,ss)) = avgColors cs where
+colorPixel :: World -> (Point,[F6]) -> Color
+colorPixel w ((i,j),grids) = avgColors cs where
   d = wMaxDepth w
-  cs = map (\((p,q),re,rfts) -> raytrace w d rfts (getRay w (i+p,j+q) re)) (zip3 aa dof ss)
+  cs = map (\(F6 p q r0 r1 s0 s1) -> raytrace w d s0 s1 (getRay w (i+p,j+q) r0 r1)) grids
 {-# INLINE colorPixel #-}
 
 
 {- TODO use continuations with hitBVH -}
-raytrace :: World -> Int -> Point -> Ray3 -> Color
-raytrace _ 0 _ _ = Color 0 0 0
-raytrace world depth rfts (Ray3 (base,dir)) = clr where
+raytrace :: World -> Int -> Float -> Float -> Ray3 -> Color
+raytrace _ 0 _ _ _ = Color 0 0 0
+raytrace world depth s0 s1 (Ray3 (base,dir)) = clr where
   objs = wObjects world
   ambient_c = wAmbient world
   clr = case hitBVH (Ray3 (base,dir)) objs of
@@ -44,9 +44,9 @@ raytrace world depth rfts (Ray3 (base,dir)) = clr where
                 n = getNormal obj pt
                 v = vecM negate dir
                 {- Direct color - lambertian + blinn-phong from lights-}
-                direct_c = getDirectColor (wLights world) objs rfts ambient_c obj pt n v
+                direct_c = getDirectColor (wLights world) objs s0 s1 ambient_c obj pt n v
                 {- Indirect color - reflection + refraction -}
-                indirect_c = getIndirectColor world depth rfts dir pt n obj
+                indirect_c = getIndirectColor world depth s0 s1 dir pt n obj
             in mixColors (+) direct_c indirect_c
 {-# INLINE raytrace #-}
 
@@ -60,17 +60,18 @@ getNormal (Triangle _ _ _ tn _) _ = tn
 
 getDirectColor :: [Light] 
                -> BVH
-               -> Point  --random floats [0,1) to jitter on light
+               -> Float
+               -> Float  --random floats [0,1) to jitter on light
                -> Color
                -> Object
                -> Point3
                -> Vec3
                -> Vec3
                -> Color
-getDirectColor [] _ _ ambient_c obj _ _ _ = mixColors (*) ambient_c (diffuseColor obj)
-getDirectColor (Light l_corner l_a l_b l_c:ls) objs (ra,rb) ambient_c obj pt n v
-  | shadowed = getDirectColor ls objs (ra,rb) ambient_c obj pt n v
-  | otherwise = mixColors (+) color $ getDirectColor ls objs (ra,rb) ambient_c obj pt n v
+getDirectColor [] _ _ _ ambient_c obj _ _ _ = mixColors (*) ambient_c (diffuseColor obj)
+getDirectColor (Light l_corner l_a l_b l_c:ls) objs ra rb ambient_c obj pt n v
+  | shadowed = getDirectColor ls objs ra rb ambient_c obj pt n v
+  | otherwise = mixColors (+) color $ getDirectColor ls objs ra rb ambient_c obj pt n v
   where
     l_pt = add l_corner (add (vecM (*ra) l_a) (vecM (*rb) l_b))
     l = subt l_pt pt
@@ -85,13 +86,16 @@ getDirectColor (Light l_corner l_a l_b l_c:ls) objs (ra,rb) ambient_c obj pt n v
 {-# INLINE getDirectColor #-}  
 
 
-getIndirectColor :: World -> Int -> Point --info for recursive raytrace calls
+getIndirectColor :: World
+                 -> Int
+                 -> Float
+                 -> Float --info for recursive raytrace calls
                  -> Vec3                          --ray dir
                  -> Vec3                          --point
                  -> Vec3                          --surface normal
                  -> Object
                  -> Color
-getIndirectColor w depth rfts@(r1,r2) dir pt normal obj
+getIndirectColor w depth s0 s1 dir pt normal obj
   | nt == 0 = refl_c
   | otherwise = color 
   where
@@ -99,12 +103,12 @@ getIndirectColor w depth rfts@(r1,r2) dir pt normal obj
     refl0 = reflect dir normal
     (u,v) = orthonormal refl0
     a = 1 / phongExp obj
-    ju = -a / 2 + r1 * a --cheat and use shadow ray random floats
-    jv = -a / 2 + r2 * a
+    ju = -a / 2 + s0 * a --cheat and use shadow ray random floats
+    jv = -a / 2 + s1 * a
     refl_v = add refl0 (add (multiply u ju) (multiply v jv))
     refl_c = scaleColor (* reflectionIndex obj) $ 
              mixColors (*) (specularColor obj) $ 
-             raytrace w (depth - 1) rfts (Ray3 (pt,refl_v))
+             raytrace w (depth - 1) s0 s1 (Ray3 (pt,refl_v))
     nt = refractionIndex obj
     --c: angle of incidence, k: attenuation, t: refracted ray
     dn = dot dir normal
@@ -125,7 +129,7 @@ getIndirectColor w depth rfts@(r1,r2) dir pt normal obj
     -- Beer's law
     color = case t of
               Nothing -> mixColors (*) k refl_c
-              Just t' -> let refr_c = raytrace w (depth - 1) rfts (Ray3 (pt,t'))
+              Just t' -> let refr_c = raytrace w (depth - 1) s0 s1 (Ray3 (pt,t'))
                              refl_c' = scaleColor (*bigR) refl_c
                              refr_c' = scaleColor (*(1-bigR)) refr_c
                          in mixColors (*) k (mixColors (+) refl_c' refr_c')
@@ -156,8 +160,8 @@ refract dir normal nt
 
 
 {- world, point on view plane, base perturbations -}
-getRay :: World -> Point -> Point -> Ray3
-getRay world (i,j) (r1,r2) = ray where
+getRay :: World -> Point -> Float -> Float -> Ray3
+getRay world (i,j) r1 r2 = ray where
   lens = wLens world
   eye = wEye world
   (u,v,w) = wCamera world
@@ -435,11 +439,12 @@ orthonormal w = let t | w == Vec3 1 0 0 = Vec3 0 1 0
 {-# INLINE orthonormal #-}
 
 {- random number generator, cycle size, the dimension of the grid -}
-generateGrids :: PureMT -> Int -> Int -> [(Grid,Grid,Grid)]
+generateGrids :: PureMT -> Int -> Int -> [[F6]]
 generateGrids rng num aa = cycle grids where
   rngs = iterate (snd . System.Random.next) rng
-  rs = randomFloats rng
-  grids = take num (zipWith (getGrids aa) rngs (chunksOf (2 * aa * aa) rs))
+  rrs = chunksOf (2 * aa * aa) (randomFloats rng)
+  grids = take num (zipWith (\gen rs -> uncurry3 (zipWith3 ptsToF6) (getGrids aa gen rs)) rngs rrs)
+  ptsToF6 (a,b) (c,d) (e,f) = F6 a b c d e f
 
 
 {- n x n grid and shuffled grids for depth of field and soft shadows -}
@@ -453,13 +458,9 @@ getGrids n rng rs = (aa,dof,ss) where
 randomFloats :: PureMT -> [Float]
 randomFloats rng = let (d,rng') = first double2Float (randomDouble rng)
                    in d : randomFloats rng'
+{-# INLINE randomFloats #-}
 
-randomPairs :: PureMT -> [(Float,Float)]
-randomPairs rng = let (a,rng') = first double2Float (randomDouble rng)
-                      (b,rng'') = first double2Float (randomDouble rng')
-                  in (a,b) : randomPairs rng''
-
-{- packets -}
+{- packets
 colorPacket :: World -> (Packet,[Point]) -> Color
 colorPacket w (packet@(Packet _ rays),shpts) = avgColors colors
   where
@@ -509,4 +510,7 @@ getRayPacket w ((i,j),(rrs,(pts,sh_grid))) = (Packet frustum rays,sh_pts)
     rOfst = dot (wEye w) rightN
     frustum = Frustum bOfst tOfst lOfst rOfst botN topN leftN rightN
 {-# INLINE getRayPacket #-}
-        
+-}
+
+uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
+uncurry3 f (a,b,c) = f a b c
