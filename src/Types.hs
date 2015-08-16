@@ -135,7 +135,6 @@ data World = World { wImgWd :: Float
                    , wViewHt :: Float
                    , wViewDt :: Float
                    , wAntiAliasing :: Int --sqrt of number of rays to cast
-                   , wDOF :: Int --number of rays for depth of field
                    , wLens :: Float --length of side of lens (0 for pinhole)
                    , wUp :: Vec3
                    , wEye :: Vec3

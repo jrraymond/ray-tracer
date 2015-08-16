@@ -31,15 +31,15 @@ main = execParser opts >>= run
 
 run :: Config -> IO ()
 run _ = do 
-  let c = bench4Config
+  let c = bench6Config
   objs <- case cScene c of
             Nothing -> return []
             Just fname -> do ms <- parseObj fname
                              case ms of
                                Left e -> error (show e)
                                Right mesh -> return $ fromMesh (convertMesh mesh)
-  --let w = bench6World objs
-  let w = bench4World
+  let w = bench6World objs
+  --let w = bench4World
   rng <- newPureMT
   let img = render rng w
   putStrLn "rendering . . ."
@@ -54,7 +54,6 @@ data Config = Config { cImageWidth :: Int
                      , cViewDistance :: Int
                      , cReflectionDepth :: Int
                      , cAntiAliasing :: Int
-                     , cDOF :: Int
                      , cLens :: Float
                      , cUp :: Vec3
                      , cEye :: Vec3
@@ -77,8 +76,6 @@ configure = Config <$> option auto (long "width" <> value 400 <>
                                    help "maximum reflections, default 3")
                    <*> option auto (long "anti-aliasing" <> value 1 <>
                                    help "rays per pixel, default 1")
-                   <*> option auto (long "depth-of-field" <> value 1 <>
-                                   help "depth of field rays, default 1")
                    <*> option auto (long "lens" <> value 0 <>
                                    help "lens size, default 0")
                    <*> option auto (long "up" <> metavar "UP_DIRECTION" <>
@@ -112,7 +109,6 @@ configToWorld c objs lights =
           , wViewHt = fromIntegral (cViewHeight c)
           , wViewDt = fromIntegral (cViewDistance c)
           , wAntiAliasing = floor (sqrt (fromIntegral (cAntiAliasing c) :: Float))
-          , wDOF = cDOF c
           , wLens = cLens c
           , wUp = cUp c
           , wEye = cEye c
@@ -143,7 +139,7 @@ writePPM name w h pixels = writeFile name txt  where
 
 {- for using the repl -}
 scene1C :: Config
-scene1C = Config 800 600 8 6 7 6 25 1 0 (Vec3 0 1 0) (Vec3 10 0 0) (Vec3 0 0 0) Nothing
+scene1C = Config 800 600 8 6 7 6 25 0 (Vec3 0 1 0) (Vec3 10 0 0) (Vec3 0 0 0) Nothing
 scene1W :: World
 scene1W = configToWorld scene1C [ Sphere (Vec3 0 0 0) 1 redM ] bench1Lights
 {-
@@ -157,7 +153,6 @@ bench1Config = Config 800 600
                      8 6 7
                      6
                      25
-                     1
                      0
                      (Vec3 0 1 0)
                      (Vec3 20 5 20)
@@ -173,7 +168,6 @@ bench2Config = Config 800 600
                      8 6 7
                      6
                      25
-                     1
                      0
                      (Vec3 0 1 0)
                      (Vec3 25 10 25)
@@ -188,7 +182,6 @@ bench3Config = Config 800 600
                      8 6 7
                      6
                      25
-                     1
                      0
                      (Vec3 0 1 0)
                      (Vec3 25 0 25)
@@ -200,12 +193,11 @@ bench3World = configToWorld bench3Config bench3Objects bench3Lights
 
 --depth of field example
 bench4Config :: Config
-bench4Config = Config 800 600 --3200 1800
-                      8 6 7 -- 16 9 10
-                      6 --10 --6
-                      25 --64
-                      25 --25
-                      0.1
+bench4Config = Config 800 600 --3200 1800 --800 600
+                      8 6 7 --16 9 10 --8 6 7
+                      6 --10 --6 --10 --6
+                      25 --400 --64
+                      0.05
                       (Vec3 0 1 0)
                       (Vec3 50 5 0)
                       (Vec3 0 0 0)
@@ -219,8 +211,7 @@ bench5Config :: Config
 bench5Config = Config 800 600 
                       8 6 7
                       6
-                      64
-                      1
+                      25
                       0.0
                       (Vec3 0 1 0)
                       (Vec3 20 0 0)
@@ -232,11 +223,10 @@ bench5World = configToWorld bench5Config bench5Objects bench5Lights
 
 --scene parsing example
 bench6Config :: Config
-bench6Config = Config 800 600 
+bench6Config = Config 80 60 
                       8 6 8
+                      6
                       4
-                      25
-                      1
                       0.0
                       (Vec3 0 1 0)
                       --(Vec3 5 2 5)

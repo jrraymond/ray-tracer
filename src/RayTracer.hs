@@ -19,10 +19,30 @@ render :: PureMT -> World -> [Color]
 render rng w = cs where
   grids = generateGrids rng (round (wImgWd w) + 10) (wAntiAliasing w)
   ps = [ (i,j) | j <- reverse [0..wImgHt w - 1] , i <- [0..wImgWd w - 1] ]
+  --ps = toIndices (round (wImgWd w)) (round (wImgHt w)) 16
   cs = map (colorPixel w) (zip ps grids)
   --cs = withStrategy (parBuffer 1000 rdeepseq) $ map (raytrace world (maxDepth world) . getRay world) ps
   --cs = map (colorPacket world . getRayPacket world) (zip ps grids)
-    
+
+{- TODO go back from indices to correct position -}
+
+{- indices in packet order where xx is packet size -}
+toIndices :: Int -> Int -> Int -> [(Float,Float)]
+toIndices wd ht x = filter ok ixs
+  where
+    ok (i,j) = 0 <= i && i < fromIntegral wd && 0 <= j && j < fromIntegral ht
+    ixs = map (mapT fromIntegral . fromIx wd' ht' x) [0..wd' * ht']
+    wd' = max wd (x * (div wd x + 1))
+    ht' = max ht (x * (div ht x + 1))
+
+{- maps index to the (i,j) pixel on the viewing frame -}
+fromIx :: Int -> Int -> Int -> Int -> (Int,Int)
+fromIx wd ht x ix =
+  let i = mod ix x + mod (x * div ix (x * x)) wd
+      j = ht - 1 - div (mod ix (x * x)) x - x * div ix (wd * x)
+  in (i,j)
+{-# INLINE fromIx #-}
+
 --TODO clean up zipping and unzipping
 colorPixel :: World -> (Point,[F6]) -> Color
 colorPixel w ((i,j),grids) = avgColors cs where
@@ -514,3 +534,6 @@ getRayPacket w ((i,j),(rrs,(pts,sh_grid))) = (Packet frustum rays,sh_pts)
 
 uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
 uncurry3 f (a,b,c) = f a b c
+
+mapT :: (a -> b) -> (a,a) -> (b,b)
+mapT f (a,b) = (f a, f b)

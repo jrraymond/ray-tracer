@@ -46,7 +46,7 @@ executable ray-tracer
           
   hs-source-dirs:      src
   default-language:    Haskell2010
-  GHC-Options: -Wall -O3 -rtsopts -threaded -feager-blackholing -fno-warn-unused-do-bind -fno-warn-missing-signatures -funbox-strict-fields
+  GHC-Options: -Wall -O3 -rtsopts -threaded -feager-blackholing -funbox-strict-fields
 
   if flag(Eventlog)
     GHC-Options: -O3 -rtsopts -funbox-strict-fields -threaded -eventlog -Wall
@@ -56,25 +56,25 @@ executable ray-tracer
   if flag(Dump)
     GHC-options: -O3 -funbox-strict-fields -Wall -ddump-simpl -dsuppress-module-prefixes -dsuppress-uniques -ddump-to-file
 
-benchmark bench
-  Default-Language: Haskell2010
-  Type:             exitcode-stdio-1.0
-  HS-Source-Dirs:   benchmarks, src
-  Main-Is:          Main.hs
-  GHC-Options:     -O3 -Wall -rtsopts -fno-warn-unused-do-bind -fno-warn-missing-signatures -funbox-strict-fields
-  build-depends:       base         >=    4.5  && < 5
-                     , process
-                     , parallel
-                     , deepseq
-                     , optparse-applicative
-                     , transformers
-                     , mtl
-                     , containers
-                     , primitive
-                     , parsec
-                     , random
-                     , random-shuffle
-                     , mersenne-random-pure64
-                     , vector
-                     , vector-th-unbox
-                     , criterion
+--benchmark bench
+--  Default-Language: Haskell2010
+--  Type:             exitcode-stdio-1.0
+--  HS-Source-Dirs:   benchmarks, src
+--  Main-Is:          Main.hs
+--  GHC-Options:     -O3 -Wall -rtsopts -funbox-strict-fields
+--  build-depends:       base         >=    4.5  && < 5
+--                     , process
+--                     , parallel
+--                     , deepseq
+--                     , optparse-applicative
+--                     , transformers
+--                     , mtl
+--                     , containers
+--                     , primitive
+--                     , parsec
+--                     , random
+--                     , random-shuffle
+--                     , mersenne-random-pure64
+--                     , vector
+--                     , vector-th-unbox
+--                     , criterion

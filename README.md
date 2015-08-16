@@ -17,7 +17,7 @@ Glossy Reflections:
 ![Glossy](https://github.com/jrraymond/ray-tracer/blob/master/images/glossy_reflections.png)
 
 Depth of Field:  
-![DOF](https://github.com/jrraymond/ray-tracer/blob/master/images/depthoffield.png)
+![DOF](https://github.com/jrraymond/ray-tracer/blob/master/images/depthoffield10.png)
 
 Reflections and refractions:  
 ![Station](https://github.com/jrraymond/ray-tracer/blob/master/images/station.png)
