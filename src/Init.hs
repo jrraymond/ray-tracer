@@ -100,7 +100,7 @@ writePPM name w h pixels = writeFile name txt  where
 
 {- for using the repl -}
 scene1C :: Config
-scene1C = Config 800 600 1 8 6 7 6 25 0 (Vec3 0 1 0) (Vec3 10 0 0) (Vec3 0 0 0) Nothing
+scene1C = Config 800 600 800 8 6 7 6 25 0 (Vec3 0 1 0) (Vec3 10 0 0) (Vec3 0 0 0) Nothing
 scene1W :: World
 scene1W = configToWorld scene1C [ Sphere (Vec3 0 0 0) 1 redM ] bench1Lights
 {-
@@ -110,7 +110,7 @@ grids_ = generateGrids rng_ (cImageWidth scene1C + 10) (wAntiAliasing scene1W)
 randoms_ = zip rs_ grids_
 -}
 bench1Config :: Config
-bench1Config = Config 800 600 1
+bench1Config = Config 800 600 800
                      8 6 7
                      6
                      25
@@ -125,7 +125,7 @@ bench1World = configToWorld bench1Config bench1Objects bench1Lights
 
 
 bench2Config :: Config
-bench2Config = Config 800 600 1
+bench2Config = Config 800 600 800
                      8 6 7
                      6
                      25
@@ -139,7 +139,7 @@ bench2World :: World
 bench2World = configToWorld bench2Config bench2Objects bench2Lights
 
 bench3Config :: Config
-bench3Config = Config 800 600 1
+bench3Config = Config 800 600 800
                      8 6 7
                      6
                      25
@@ -154,7 +154,7 @@ bench3World = configToWorld bench3Config bench3Objects bench3Lights
 
 --depth of field example
 bench4Config :: Config
-bench4Config = Config 800 600 1 --3200 1800 --800 600
+bench4Config = Config 800 600 800 --3200 1800 --800 600
                       8 6 7 --16 9 10 --8 6 7
                       6 --10 --6 --10 --6
                       25 --400 --64
@@ -169,7 +169,7 @@ bench4World = configToWorld bench4Config bench4Objects bench4Lights
 
 --glossy example
 bench5Config :: Config
-bench5Config = Config 800 600 1
+bench5Config = Config 800 600 800
                       8 6 7
                       6
                       25
@@ -184,7 +184,7 @@ bench5World = configToWorld bench5Config bench5Objects bench5Lights
 
 --scene parsing example
 bench6Config :: Config
-bench6Config = Config 800 600 1
+bench6Config = Config 800 600 800
                       8 6 8
                       6
                       4

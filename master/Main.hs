@@ -3,17 +3,15 @@ module Main where
 
 import RayTracer
 import HaObj
+import Codec
 
 import Control.Concurrent
 import Control.Exception
 import Control.Monad
-import Data.Binary
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString as B
+import Control.Monad.Loops (whileM_)
 import Data.List (sortOn)
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
 import Options.Applicative
-import System.IO hiding (hPutStrLn)
 import System.Log.Logger
 import System.Log.Formatter
 import System.Log.Handler (setFormatter)
@@ -26,9 +24,9 @@ main = execParser opts >>= masterMain
 
 masterMain :: Config -> IO ()
 masterMain _ = withSocketsDo $ do
-  logH <- fileHandler "Master.log" INFO >>= \lh -> return $
+  logH <- fileHandler "master.log" INFO >>= \lh -> return $
           setFormatter lh (simpleLogFormatter "[$time : $prio] $msg")
-  updateGlobalLogger rootLoggerName (addHandler logH)
+  updateGlobalLogger rootLoggerName (setLevel INFO . addHandler logH)
   let c = bench6Config
   objs <- case cScene c of
             Nothing -> return []
@@ -78,28 +76,27 @@ sender :: World
        -> Chan (Int,[Color])
        -> Socket
        -> IO ()
-sender world ntodo ndone todo done sock0 = withSocketsDo $ loop sock0
+sender world ntodo ndone todo done sock0 = 
+  whileM_ ((< ntodo) <$> readMVar ndone) $ do
+    (skt,_) <- accept sock0
+    infoM rootLoggerName "Connection accepted!"
+    _ <- forkIO $ runLoop skt
+    infoM rootLoggerName (show ntodo ++ " completed")
   where
-    loop :: Socket -> IO ()
-    loop sock = do
-      (sck,_) <- accept sock
-      infoM rootLoggerName "Connection accepted!"
-      sHandle <- socketToHandle sck ReadWriteMode
-      _ <- forkIO $ runLoop sHandle
-      isDone <- (== ntodo) <$> readMVar ndone
-      unless isDone (loop sock)
-    runLoop :: Handle -> IO ()
-    runLoop sHandle = do
-      isDone <- (== ntodo) <$> readMVar ndone
-      unless isDone $ do
+    runLoop :: Socket -> IO ()
+    runLoop sock = do
+      bs0 <- sendMsg sock world
+      infoM rootLoggerName $ "sent world " ++ show bs0
+      whileM_ ((< ntodo) <$> readMVar ndone) $ do
         ps <- readChan todo
-        result <- try $ sendPixels sHandle world ps
+        result <- try $ sendPixels sock ps
         case result :: Either SomeException (Int,[Color]) of
           Right ps' -> writeChan done ps' >>
                        incMVar ndone >>
-                       runLoop sHandle
-          Left _ -> writeChan todo ps >>
-                    runLoop sHandle
+                       infoM rootLoggerName (show ps ++ " succesful")
+          Left e -> infoM rootLoggerName
+                          (show e ++ ": " ++ show ps ++ " failed") >>
+                    writeChan todo ps
 
 
 incMVar :: MVar Int -> IO ()
@@ -107,30 +104,15 @@ incMVar mv = do
   i <- takeMVar mv
   putMVar mv (i + 1)
 
-sendPixels :: Handle -> World -> (Int,(Int,Int)) -> IO (Int,[Color])
-sendPixels sHandle world ps = do
-  req <- B.hGetSome sHandle 1
-  when (strictDecode req) $ do
-    infoM rootLoggerName "received world request"
-    let wstr = strictEncode world
-    B.hPut sHandle (strictEncode (B.length wstr))
-    B.hPut sHandle wstr
-    infoM rootLoggerName "sent world"
-  let pstr = strictEncode ps
-  B.hPut sHandle (strictEncode (B.length pstr))
-  B.hPut sHandle pstr
-  putStrLn $ "sent work " ++ show (B.length pstr)
-  rb <- B.hGetSome sHandle 4
-  let rbytes = strictDecode rb
-  resp <- B.hGet sHandle rbytes
-  putStrLn $ "received " ++ show rbytes
-  return $ strictDecode resp
-
-
-strictEncode :: Binary a => a -> B.ByteString
-strictEncode = BL.toStrict . encode
-strictDecode :: Binary a => B.ByteString -> a
-strictDecode = decode . BL.fromStrict
+sendPixels :: Socket -> (Int,(Int,Int)) -> IO (Int,[Color])
+sendPixels sock ps = do
+  bs0 <- sendMsg sock ps
+  infoM rootLoggerName $ "sent work " ++ show bs0
+  result <- recMsg sock :: IO (Maybe (Int,[Color]))
+  infoM rootLoggerName  "received result"
+  case result of
+    Nothing -> throwIO (UnexpectedEnd "result was Nothing")
+    Just cs -> return cs
 
 
 readNextN :: Chan a -> Int -> IO [a]

@@ -1,16 +1,13 @@
 module Main where
 
 import RayTracer
+import Codec
 
-import Data.Binary
 import Control.Exception
 import Control.Monad
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString as B
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
 import Control.Concurrent
 import Options.Applicative
-import System.IO hiding (hPutStrLn)
 import System.IO.Error
 import System.Log.Logger
 import System.Log.Formatter
@@ -39,7 +36,7 @@ startWorker opts = withSocketsDo $ do
 
 -- t is how long to wait before retrying in seconds
 loop :: Opts -> Int -> Int -> Int -> IO ()
-loop opts nmax 0 t = warningM rootLoggerName (show opts ++ " not responding . . . sleeping") >>
+loop opts nmax 0 _ = warningM rootLoggerName (show opts ++ " not responding . . . sleeping") >>
                      threadDelay (10 ^ (6 :: Int) * 2 ^ (9 :: Int)) >>
                      loop opts nmax nmax 1
 loop opts nmax n t = catch (loopListen opts) handler
@@ -56,42 +53,31 @@ loopListen (Opts ip port _ _) = do
     infos <- getAddrInfo Nothing (Just ip) (Just port)
     sock <- socket AF_INET Stream 0
     connect sock (addrAddress . head $ infos)
-    sHandle <- socketToHandle sock ReadWriteMode
-    hSetBuffering sHandle NoBuffering
-    runConn sHandle 
-    hClose sHandle
+    runConn sock
+    --todo socket closing and stuff
 
-runConn :: Handle -> IO ()
-runConn sHandle = do
-  infoM rootLoggerName "sending initial request"
-  B.hPut sHandle (strictEncode True)
-  infoM rootLoggerName "waiting for number of world bytes"
-  nbytes <- strictDecode <$> B.hGetSome sHandle 4
-  infoM rootLoggerName "received number of number of bytes"
-  wbs <- B.hGet sHandle nbytes
-  infoM rootLoggerName "received world"
-  rng <- newPureMT
-  let w = strictDecode wbs
-      grids = generateGrids rng (round (wImgWd w) + 10) (wAntiAliasing w)
-  forever $ do
-    infoM rootLoggerName "sending work request"
-    B.hPut sHandle (strictEncode False)
-    workBytes <- B.hGetSome sHandle 4
-    work <- B.hGet sHandle (strictDecode workBytes)
-    let (i,(start,step)) = strictDecode work :: (Int,(Int,Int))
-        ps = map (mapT fromIntegral . fromIx (round (wImgWd w)) (round (wImgHt w)) 1) [start..step]
-        img = map (colorPixel w) (zip ps grids)
-        resp = strictEncode (i,img)
-        respBytes = B.length resp
-    B.hPut sHandle (strictEncode respBytes)
-    B.hPut sHandle resp
-    infoM rootLoggerName $ "sent completed (" ++ show respBytes ++ ") bytes"
+runConn :: Socket -> IO ()
+runConn skt = do
+  infoM rootLoggerName "waiting for world"
+  worldM <- recMsg skt
+  case worldM of
+    Nothing -> throwIO (UnexpectedEnd "world was Nothing")
+    Just world -> do
+      rng <- newPureMT
+      let grids = generateGrids rng (round (wImgWd world) + 10) (wAntiAliasing world)
+      forever $ do
+        workM <- recMsg skt :: IO (Maybe (Int,(Int,Int)))
+        infoM rootLoggerName "received work"
+        case workM of
+          Nothing -> void (infoM rootLoggerName "workM nothing")
+          Just (wID,(start,step)) -> do
+            infoM rootLoggerName $ "rendering " ++ show start ++ " to " ++ show (start + step)
+            let img = renderIxs grids world start step
+            bs2 <- sendMsg skt (wID,img)
+            infoM rootLoggerName $ "sent image " ++ show bs2
 
-strictEncode :: Binary a => a -> B.ByteString
-strictEncode = BL.toStrict . encode
 
-strictDecode :: Binary a => B.ByteString -> a
-strictDecode = decode . BL.fromStrict
+
 
 data Opts = Opts { _ip :: String
                  , _port :: String 

@@ -31,6 +31,11 @@ render rng w = cs where
   --cs = withStrategy (parBuffer 1000 rdeepseq) $ map (raytrace world (maxDepth world) . getRay world) ps
   --cs = map (colorPacket world . getRayPacket world) (zip ps grids)
 
+renderIxs :: [[F6]] -> World -> Int -> Int -> [Color]
+renderIxs grids w start step = 
+  let fromIx' = fromIx (round (wImgWd w)) (round (wImgHt w)) 1
+      ps = map (mapT fromIntegral . fromIx') [start..step]
+  in map (colorPixel w) (zip ps grids)
 {- TODO go back from indices to correct position -}
 
 {- indices in packet order where xx is packet size -}
