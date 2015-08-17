@@ -10,17 +10,14 @@ import Control.Monad
 import Data.Binary
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString as B
-import Data.ByteString.Char8 (hPutStrLn)
 import Data.List (sortOn)
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
 import Options.Applicative
 import System.IO hiding (hPutStrLn)
-import System.Directory
 import System.Log.Logger
 import System.Log.Formatter
 import System.Log.Handler (setFormatter)
 import System.Log.Handler.Simple
-import System.Random
 
 main :: IO ()
 main = execParser opts >>= masterMain
@@ -115,14 +112,14 @@ sendPixels sHandle world ps = do
   req <- B.hGetSome sHandle 1
   when (strictDecode req) $ do
     infoM rootLoggerName "received world request"
-    let str = strictEncode world
-    B.hPut sHandle (strictEncode (B.length str))
-    B.hPut sHandle str
+    let wstr = strictEncode world
+    B.hPut sHandle (strictEncode (B.length wstr))
+    B.hPut sHandle wstr
     infoM rootLoggerName "sent world"
-  let str = strictEncode ps
-  B.hPut sHandle (strictEncode (B.length str))
-  B.hPut sHandle str
-  putStrLn $ "sent work " ++ show (B.length str)
+  let pstr = strictEncode ps
+  B.hPut sHandle (strictEncode (B.length pstr))
+  B.hPut sHandle pstr
+  putStrLn $ "sent work " ++ show (B.length pstr)
   rb <- B.hGetSome sHandle 4
   let rbytes = strictDecode rb
   resp <- B.hGet sHandle rbytes

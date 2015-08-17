@@ -26,6 +26,19 @@ Flag Dump
 library
   exposed-modules:     RayTracer
                      , HaObj
+  other-modules:       Types
+                     , Init
+                     , Convert
+                     , Geometry3
+                     , BoundingVolumeHierarchy
+                     , Surfaces
+                     , Objects
+                     , BenchmarkScene2
+                     , BenchmarkScene3
+                     , BenchmarkScene4
+                     , BenchmarkScene5
+                     , BenchmarkScene
+                     , Materials
   build-depends:       base         >=    4.5  && < 5
                      , binary
                      , process
@@ -89,6 +102,7 @@ executable ray-tracer-worker
                      , bytestring
                      , hslogger
                      , random
+                     , mersenne-random-pure64
                      , network
                      , optparse-applicative
           

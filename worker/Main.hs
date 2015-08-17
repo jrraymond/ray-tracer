@@ -4,11 +4,9 @@ import RayTracer
 
 import Data.Binary
 import Control.Exception
-import Control.Lens
 import Control.Monad
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString as B
-import Data.ByteString.Char8 (hPutStrLn)
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
 import Control.Concurrent
 import Options.Applicative
@@ -18,6 +16,7 @@ import System.Log.Logger
 import System.Log.Formatter
 import System.Log.Handler (setFormatter)
 import System.Log.Handler.Simple
+import System.Random.Mersenne.Pure64
 
 
 main :: IO ()
@@ -72,19 +71,19 @@ runConn sHandle = do
   wbs <- B.hGet sHandle nbytes
   infoM rootLoggerName "received world"
   rng <- newPureMT
-  let world = strictDecode wbs
+  let w = strictDecode wbs
       grids = generateGrids rng (round (wImgWd w) + 10) (wAntiAliasing w)
   forever $ do
     infoM rootLoggerName "sending work request"
     B.hPut sHandle (strictEncode False)
     workBytes <- B.hGetSome sHandle 4
     work <- B.hGet sHandle (strictDecode workBytes)
-    let (i,pIxs) = strictDecode work
-        ps = map (fromIx (round (wImgWd w)) (round (wImgHt w)) 1) pIxs
-        img = map (colorPixel world) (zip ps grids)
+    let (i,(start,step)) = strictDecode work :: (Int,(Int,Int))
+        ps = map (mapT fromIntegral . fromIx (round (wImgWd w)) (round (wImgHt w)) 1) [start..step]
+        img = map (colorPixel w) (zip ps grids)
         resp = strictEncode (i,img)
         respBytes = B.length resp
-    B.hPut sHandle respBytes
+    B.hPut sHandle (strictEncode respBytes)
     B.hPut sHandle resp
     infoM rootLoggerName $ "sent completed (" ++ show respBytes ++ ") bytes"
 
