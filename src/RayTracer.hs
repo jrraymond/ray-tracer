@@ -1,10 +1,17 @@
 {-# LANGUAGE BangPatterns #-}
-module RayTracer where
+module RayTracer 
+  ( module RayTracer
+  , module Types
+  , module Init
+  , module Convert
+  ) where
 
 import Geometry3
 import Surfaces
 import BoundingVolumeHierarchy
 import Types
+import Init
+import Convert
 
 import Control.Arrow (first)
 import GHC.Float (double2Float)

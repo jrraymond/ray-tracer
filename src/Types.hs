@@ -1,16 +1,20 @@
-{-# LANGUAGE MultiParamTypeClasses, TemplateHaskell, TypeFamilies,GeneralizedNewtypeDeriving, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, TemplateHaskell, TypeFamilies,GeneralizedNewtypeDeriving, FlexibleInstances, DeriveGeneric #-}
 module Types where
 
 import Control.DeepSeq
+import Data.Binary
 import qualified Data.Vector.Unboxed as U
 import Data.Vector.Unboxed.Deriving
+import Data.Typeable
+import GHC.Generics
 
 type Point3 = Vec3
 type Point = (Float,Float)
 type Grid = [Point]
 
 
-data Vec3 = Vec3 !Float !Float !Float deriving (Show, Eq, Read)
+data Vec3 = Vec3 !Float !Float !Float deriving (Show, Eq, Read, Typeable, Generic)
+instance Binary Vec3
 newtype Ray3 = Ray3 (Vec3,Vec3) deriving (Eq, Read, Show)
 
 derivingUnbox "Vec3"
@@ -18,7 +22,9 @@ derivingUnbox "Vec3"
   [| \ (Vec3 x y z) -> (x,y,z) |]
   [| \ (x,y,z) -> Vec3 x y z |] 
 
-data Color = Color !Float !Float !Float deriving (Eq, Show, Read)
+data Color = Color !Float !Float !Float deriving (Eq, Show, Read,Typeable,Generic)
+
+instance Binary Color
 
 instance NFData Color where
   rnf (Color r g b) = rnf r `seq` rnf g `seq` rnf b
@@ -34,7 +40,9 @@ data Material =
     , matRefrIx   :: !Float  --refraction index
     , matAtten    :: !Color  --attenuation
     }
-  deriving (Eq, Show, Read)
+  deriving (Eq,Show,Read,Typeable,Generic)
+
+instance Binary Material
 
 
 derivingUnbox "Color"
@@ -50,10 +58,14 @@ derivingUnbox "Material"
 data Vertex = Vertex { vVertex   :: !Int
                      , vTexture  :: !Int
                      , vNormal   :: !Int 
-                     } deriving (Eq,Show,Read)
+                     } deriving (Eq,Show,Read,Typeable,Generic)
+
+instance Binary Vertex
 
 --3 vertex indeces and material index
-data TriFace = TriFace !Vertex !Vertex !Vertex !Int deriving (Eq,Read,Show)
+data TriFace = TriFace !Vertex !Vertex !Vertex !Int deriving (Eq,Read,Show,Typeable,Generic)
+
+instance Binary TriFace
 
 derivingUnbox "Vertex"
   [t| Vertex -> (Int,Int,Int) |]
@@ -69,7 +81,8 @@ data Mesh = Mesh { meshVertices :: U.Vector Vec3
                  , meshNormals :: U.Vector Vec3
                  , meshMaterials :: U.Vector Material
                  , meshTriFaces :: U.Vector TriFace
-                 } deriving (Eq,Read,Show)
+                 } deriving (Eq,Read,Show,Typeable,Generic)
+
 
 data Object = Sphere { spherePos :: !Vec3
                      , sphereRad :: !Float
@@ -80,7 +93,9 @@ data Object = Sphere { spherePos :: !Vec3
                        , triangleC :: !Vec3
                        , triangleN :: !Vec3 --normal
                        , triangleMat :: !Material }
-  deriving (Eq, Show, Read)
+  deriving (Eq, Show, Read,Typeable,Generic)
+
+instance Binary Object
 
 data Axis = XAxis | YAxis | ZAxis deriving (Eq,Read,Show)
 
@@ -91,19 +106,25 @@ data Box = Box { boxXmin  :: !Float
                , boxYmax  :: !Float
                , boxZmin  :: !Float
                , boxZmax  :: !Float }
-         | EmptyBox deriving (Eq,Show,Read)
+         | EmptyBox deriving (Eq,Show,Read,Typeable,Generic)
+
+instance Binary Box
 
 {- Bounding Volume Hierarchy -}
 data BVH = Node !BVH !BVH !Box 
          | Leaf ![Object] !Box
          | Empty
-         deriving (Eq,Show,Read)
+         deriving (Eq,Show,Read,Typeable,Generic)
+
+instance Binary BVH
 
 data Light = Light !Vec3  --a corner of the light
                    !Vec3  --first edge of light
                    !Vec3  --second edge of light
                    !Color
-                   deriving (Eq,Show,Read)
+                   deriving (Eq,Show,Read,Typeable,Generic)
+
+instance Binary Light
 
 data F6 = F6 {-# UNPACK #-} !Float
              {-# UNPACK #-} !Float
@@ -111,7 +132,9 @@ data F6 = F6 {-# UNPACK #-} !Float
              {-# UNPACK #-} !Float
              {-# UNPACK #-} !Float
              {-# UNPACK #-} !Float
-             deriving (Eq,Read,Show)
+             deriving (Eq,Read,Show,Typeable,Generic)
+
+instance Binary F6
 
 {- Hessian normal form: 
 -   dot n x = b where n is normal and b is offset
@@ -125,7 +148,9 @@ data Frustum = Frustum { fBotOffset   :: !Float
                        , fTopN        :: !Vec3
                        , fLeftN       :: !Vec3
                        , fRightN      :: !Vec3
-                       } deriving (Eq,Read,Show)
+                       } deriving (Eq,Read,Show,Typeable,Generic)
+
+instance Binary Frustum
 
 data Packet = Packet !Frustum [Ray3] deriving (Eq,Read,Show)
 
@@ -143,4 +168,21 @@ data World = World { wImgWd :: Float
                    , wAmbient :: Color
                    , wLights :: [Light]
                    , wMaxDepth :: Int
-                   } deriving Show
+                   } deriving (Show,Typeable,Generic)
+
+instance Binary World
+
+data Config = Config { cImageWidth :: Int
+                     , cImageHeight :: Int
+                     , cChunks :: Int
+                     , cViewWidth :: Int
+                     , cViewHeight :: Int
+                     , cViewDistance :: Int
+                     , cReflectionDepth :: Int
+                     , cAntiAliasing :: Int
+                     , cLens :: Float
+                     , cUp :: Vec3
+                     , cEye :: Vec3
+                     , cLookAt :: Vec3
+                     , cScene :: Maybe String
+                     } deriving (Eq,Read,Show)

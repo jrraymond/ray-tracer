@@ -1,4 +1,4 @@
-module Main where
+module Init where
 
 import BenchmarkScene
 import BenchmarkScene2
@@ -8,10 +8,7 @@ import BenchmarkScene5
 import Geometry3
 import BoundingVolumeHierarchy
 import Materials
-import RayTracer
-import HaObj
 import Types
-import Convert
 
 import System.Random.Mersenne.Pure64 (newPureMT)
 import Options.Applicative
@@ -23,49 +20,13 @@ import Options.Applicative
 - TODO triangle meshes
 -}
 
-main :: IO ()
-main = execParser opts >>= run
-  where opts = info (helper <*> configure)
-                    (fullDesc <> header "Ray Tracer" )
-
-
-run :: Config -> IO ()
-run _ = do 
-  let c = bench6Config
-  objs <- case cScene c of
-            Nothing -> return []
-            Just fname -> do ms <- parseObj fname
-                             case ms of
-                               Left e -> error (show e)
-                               Right mesh -> return $ fromMesh (convertMesh mesh)
-  let w = bench6World objs
-  --let w = bench4World
-  rng <- newPureMT
-  let img = render rng w
-  putStrLn "rendering . . ."
-  writePPM "img.ppm" (cImageWidth c) (cImageHeight c) img
-  putStrLn ". . . done"
-
-
-data Config = Config { cImageWidth :: Int
-                     , cImageHeight :: Int
-                     , cViewWidth :: Int
-                     , cViewHeight :: Int
-                     , cViewDistance :: Int
-                     , cReflectionDepth :: Int
-                     , cAntiAliasing :: Int
-                     , cLens :: Float
-                     , cUp :: Vec3
-                     , cEye :: Vec3
-                     , cLookAt :: Vec3
-                     , cScene :: Maybe String
-                     } deriving (Eq,Read,Show)
-
 configure :: Parser Config
 configure = Config <$> option auto (long "width" <> value 400 <>
                                    help "image width in pixels, default 400")
                    <*> option auto (long "height" <> value 300 <>
                                    help "image height in pixels, default 300")
+                   <*> option auto (long "chunks" <> value 1 <>
+                                   help "number of chunks to divide work into, default 1")
                    <*> option auto (long "view-width" <> value 4 <>
                                    help "width of viewport, default 4")
                    <*> option auto (long "view-height" <> value 3 <>
@@ -139,7 +100,7 @@ writePPM name w h pixels = writeFile name txt  where
 
 {- for using the repl -}
 scene1C :: Config
-scene1C = Config 800 600 8 6 7 6 25 0 (Vec3 0 1 0) (Vec3 10 0 0) (Vec3 0 0 0) Nothing
+scene1C = Config 800 600 1 8 6 7 6 25 0 (Vec3 0 1 0) (Vec3 10 0 0) (Vec3 0 0 0) Nothing
 scene1W :: World
 scene1W = configToWorld scene1C [ Sphere (Vec3 0 0 0) 1 redM ] bench1Lights
 {-
@@ -149,7 +110,7 @@ grids_ = generateGrids rng_ (cImageWidth scene1C + 10) (wAntiAliasing scene1W)
 randoms_ = zip rs_ grids_
 -}
 bench1Config :: Config
-bench1Config = Config 800 600
+bench1Config = Config 800 600 1
                      8 6 7
                      6
                      25
@@ -164,7 +125,7 @@ bench1World = configToWorld bench1Config bench1Objects bench1Lights
 
 
 bench2Config :: Config
-bench2Config = Config 800 600 
+bench2Config = Config 800 600 1
                      8 6 7
                      6
                      25
@@ -178,7 +139,7 @@ bench2World :: World
 bench2World = configToWorld bench2Config bench2Objects bench2Lights
 
 bench3Config :: Config
-bench3Config = Config 800 600 
+bench3Config = Config 800 600 1
                      8 6 7
                      6
                      25
@@ -193,7 +154,7 @@ bench3World = configToWorld bench3Config bench3Objects bench3Lights
 
 --depth of field example
 bench4Config :: Config
-bench4Config = Config 800 600 --3200 1800 --800 600
+bench4Config = Config 800 600 1 --3200 1800 --800 600
                       8 6 7 --16 9 10 --8 6 7
                       6 --10 --6 --10 --6
                       25 --400 --64
@@ -208,7 +169,7 @@ bench4World = configToWorld bench4Config bench4Objects bench4Lights
 
 --glossy example
 bench5Config :: Config
-bench5Config = Config 800 600 
+bench5Config = Config 800 600 1
                       8 6 7
                       6
                       25
@@ -223,11 +184,11 @@ bench5World = configToWorld bench5Config bench5Objects bench5Lights
 
 --scene parsing example
 bench6Config :: Config
-bench6Config = Config 80 60 
+bench6Config = Config 800 600 1
                       8 6 8
                       6
                       4
-                      0.0
+                      0.000
                       (Vec3 0 1 0)
                       --(Vec3 5 2 5)
                       (Vec3 18 12 18)
