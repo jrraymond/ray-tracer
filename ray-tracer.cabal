@@ -85,11 +85,16 @@ executable ray-tracer-cloud
                      , hslogger
                      , network
                      , random
+                     , mersenne-random-pure64
                      , optparse-applicative
                      , monad-loops
                      , transformers
+                     , vector
                      , distributed-process
+                     , distributed-process-simplelocalnet
+                     , distributed-static
                      , network-transport-tcp
+                     , template-haskell
           
 
   hs-source-dirs:      cloud
