@@ -75,6 +75,27 @@ library
     GHC-options: -O3 -funbox-strict-fields -Wall -ddump-simpl -dsuppress-module-prefixes -dsuppress-uniques -ddump-to-file
 
 
+executable ray-tracer-cloud
+  main-is:             Main.hs
+  build-depends:       base         >=    4.5  && < 5
+                     , ray-tracer
+                     , binary
+                     , bytestring
+                     , directory
+                     , hslogger
+                     , network
+                     , random
+                     , optparse-applicative
+                     , monad-loops
+                     , transformers
+                     , distributed-process
+                     , network-transport-tcp
+          
+
+  hs-source-dirs:      cloud
+  default-language:    Haskell2010
+  GHC-Options: -Wall -O3 -rtsopts -funbox-strict-fields
+
 executable ray-tracer-master
   main-is:             Main.hs
   build-depends:       base         >=    4.5  && < 5
@@ -92,14 +113,6 @@ executable ray-tracer-master
   default-language:    Haskell2010
   GHC-Options: -Wall -O3 -rtsopts -funbox-strict-fields
 
-  if flag(Eventlog)
-    GHC-Options: -O3 -rtsopts -funbox-strict-fields -eventlog -Wall
-  if flag(Profiling)
-    ghc-prof-options: -O3 -auto-all
-    GHC-Options: -O3 -rtsopts -funbox-strict-fields -fprof-auto -Wall
-  if flag(Dump)
-    GHC-options: -O3 -funbox-strict-fields -Wall -ddump-simpl -dsuppress-module-prefixes -dsuppress-uniques -ddump-to-file
-
 executable ray-tracer-worker
   main-is:             Main.hs
   build-depends:       base         >=    4.5  && < 5
@@ -115,14 +128,6 @@ executable ray-tracer-worker
   hs-source-dirs:      worker
   default-language:    Haskell2010
   GHC-Options: -Wall -O3 -rtsopts -feager-blackholing -funbox-strict-fields
-
-  if flag(Eventlog)
-    GHC-Options: -O3 -rtsopts -funbox-strict-fields -eventlog -Wall
-  if flag(Profiling)
-    ghc-prof-options: -O3 -auto-all
-    GHC-Options: -O3 -rtsopts -funbox-strict-fields -fprof-auto -Wall
-  if flag(Dump)
-    GHC-options: -O3 -funbox-strict-fields -Wall -ddump-simpl -dsuppress-module-prefixes -dsuppress-uniques -ddump-to-file
 
 --benchmark bench
 --  Default-Language: Haskell2010
