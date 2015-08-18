@@ -81,7 +81,7 @@ sender world ntodo ndone todo done sock0 =
     (skt,_) <- accept sock0
     infoM rootLoggerName "Connection accepted!"
     _ <- forkIO $ runLoop skt
-    infoM rootLoggerName (show ntodo ++ " completed")
+    return ()
   where
     runLoop :: Socket -> IO ()
     runLoop sock = do
@@ -106,6 +106,7 @@ incMVar mv = do
 
 sendPixels :: Socket -> (Int,(Int,Int)) -> IO (Int,[Color])
 sendPixels sock ps = do
+  infoM rootLoggerName $ "sending " ++ show ps
   bs0 <- sendMsg sock ps
   infoM rootLoggerName $ "sent work " ++ show bs0
   result <- recMsg sock :: IO (Maybe (Int,[Color]))

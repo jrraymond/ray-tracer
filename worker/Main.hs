@@ -67,7 +67,7 @@ runConn skt = do
       let grids = generateGrids rng (round (wImgWd world) + 10) (wAntiAliasing world)
       forever $ do
         workM <- recMsg skt :: IO (Maybe (Int,(Int,Int)))
-        infoM rootLoggerName "received work"
+        infoM rootLoggerName $ "received work " ++ show workM
         case workM of
           Nothing -> void (infoM rootLoggerName "workM nothing")
           Just (wID,(start,step)) -> do
