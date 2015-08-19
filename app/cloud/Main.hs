@@ -72,12 +72,10 @@ master c peers = do
   liftIO $ C.writeList2Chan todo (zip [0 :: Int ..] pSteps)
   ready <- liftIO $ MU.replicate (length peers) True
   liftIO $ mapM_ print peers
-  say $ printf "Starting slaves"
   -- then we start slaves
   ps <- forM peers $ \nid -> do
           say $ printf "spawing on %s" (show nid)
           spawn nid $(mkStaticClosure 'pingServer)
-  say $ printf "slaves started"
   mypid <- getSelfPid
 
   forM_ ps $ \pid -> do
@@ -126,10 +124,11 @@ sendAll :: ProcessId
         -> MU.IOVector Bool
         -> [ProcessId]
         -> Process ()
-sendAll mypid todo ntodo nsent ready ps =
+sendAll mypid todo ntodo nsent ready ps = do
+  numsent0 <- liftIO $ C.readMVar nsent
+  say $ printf "ntodo %d nsent %d" ntodo numsent0
   forM_ (zip [0..] ps) $ \(i,pid) -> do
     numsent <- liftIO $ C.readMVar nsent
-    say $ printf "ntodo %d nsent %d" ntodo numsent
     idle <- liftIO $ MU.read ready i
     say $ printf "%s" (show (idle && numsent < ntodo))
     when (idle && numsent < ntodo) $ do

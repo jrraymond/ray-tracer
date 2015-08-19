@@ -184,7 +184,7 @@ bench5World = configToWorld bench5Config bench5Objects bench5Lights
 
 --scene parsing example
 bench6Config :: Config
-bench6Config = Config 800 600 16
+bench6Config = Config 800 600 32
                       8 6 8
                       6
                       4

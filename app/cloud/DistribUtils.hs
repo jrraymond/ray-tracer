@@ -1,22 +1,17 @@
-{-# LANGUAGE TemplateHaskell #-}
 module DistribUtils ( distribMain ) where
 
 import Control.Distributed.Process
-import Control.Distributed.Process.Closure
 import Control.Distributed.Process.Node (initRemoteTable)
 import Control.Distributed.Process.Backend.SimpleLocalnet
-import Control.Distributed.Static hiding (initRemoteTable)
 
 import System.Environment
-import Network.Socket hiding (shutdown)
-
-import Language.Haskell.TH
 
 distribMain :: ([NodeId] -> Process ()) -> (RemoteTable -> RemoteTable) -> IO ()
 distribMain master frtable = do
   args <- getArgs
   let rtable = frtable initRemoteTable
-
+      defaultHost = "localhost"
+      defaultPort = "44444"
   case args of
     [] -> do
       backend <- initializeBackend defaultHost defaultPort rtable
@@ -29,8 +24,6 @@ distribMain master frtable = do
       startMaster backend master
     [ "master", host, port ] -> do
       backend <- initializeBackend host port rtable
-      peers <- findPeers backend 1000000
-      mapM_ print peers
       startMaster backend master
     [ "slave" ] -> do
       backend <- initializeBackend defaultHost defaultPort rtable
@@ -41,6 +34,4 @@ distribMain master frtable = do
     [ "slave", host, port ] -> do
       backend <- initializeBackend host port rtable
       startSlave backend
-
-defaultHost = "localhost"
-defaultPort = "44444"
+    _ -> print "Usage: ray-tracer-cloud <master|slave> [ <ip_address> <port> ]"
