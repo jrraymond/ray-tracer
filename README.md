@@ -1,4 +1,4 @@
-A distributed ray tracer.
+A distributed distributed ray tracer.
 
 
 Features:  
