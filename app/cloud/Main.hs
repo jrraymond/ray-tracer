@@ -71,12 +71,13 @@ master c peers = do
   done <- liftIO (C.newChan :: IO (C.Chan (Int,[Color])))
   liftIO $ C.writeList2Chan todo (zip [0 :: Int ..] pSteps)
   ready <- liftIO $ MU.replicate (length peers) True
-
+  liftIO $ mapM_ print peers
+  say $ printf "Starting slaves"
   -- then we start slaves
   ps <- forM peers $ \nid -> do
           say $ printf "spawing on %s" (show nid)
           spawn nid $(mkStaticClosure 'pingServer)
-
+  say $ printf "slaves started"
   mypid <- getSelfPid
 
   forM_ ps $ \pid -> do
