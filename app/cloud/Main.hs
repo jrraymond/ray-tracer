@@ -130,7 +130,7 @@ sendAll mypid todo ntodo nsent ready ps = do
   say $ printf "ntodo %d nsent %d" ntodo numsent
   forM_ (zip [0..] ps) $ \(i,pid) -> do
     idle <- liftIO $ MU.read ready i
-    when (idle && numsent < ntodo 1) $ do
+    when (idle && numsent < ntodo - 1) $ do
       (wID,(start,stop)) <- liftIO $ C.readChan todo
       say $ printf "sending %d(%d-%d) to %s" wID start stop (show pid)
       send pid (MsgWork mypid (i,wID,start,stop))
