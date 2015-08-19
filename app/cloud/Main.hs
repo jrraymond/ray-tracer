@@ -125,12 +125,13 @@ sendAll :: ProcessId
         -> MU.IOVector Bool
         -> [ProcessId]
         -> Process ()
-sendAll mypid todo ntodo nsent ready ps = do
-  numsent <- liftIO $ C.readMVar nsent
-  say $ printf "ntodo %d nsent %d" ntodo numsent
+sendAll mypid todo ntodo nsent ready ps =
   forM_ (zip [0..] ps) $ \(i,pid) -> do
+    numsent <- liftIO $ C.readMVar nsent
+    say $ printf "ntodo %d nsent %d" ntodo numsent
     idle <- liftIO $ MU.read ready i
-    when (idle && numsent < ntodo - 1) $ do
+    say $ printf "%s" (show (idle && numsent < ntodo))
+    when (idle && numsent < ntodo) $ do
       (wID,(start,stop)) <- liftIO $ C.readChan todo
       say $ printf "sending %d(%d-%d) to %s" wID start stop (show pid)
       send pid (MsgWork mypid (i,wID,start,stop))

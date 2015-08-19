@@ -29,6 +29,8 @@ distribMain master frtable = do
       startMaster backend master
     [ "master", host, port ] -> do
       backend <- initializeBackend host port rtable
+      peers <- findPeers backend 1000000
+      mapM_ print peers
       startMaster backend master
     [ "slave" ] -> do
       backend <- initializeBackend defaultHost defaultPort rtable
