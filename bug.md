@@ -1,0 +1,1 @@
+Odd bug happening. When at least 1.6Mb of data is sent, the data in the packet of the subsequent send is not the same bytestring send by Network.Socket.ByteString.Lazy.send, so I'm gonna let this stew for a bit.
