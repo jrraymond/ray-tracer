@@ -12,6 +12,7 @@ import Control.Monad
 import Control.Monad.Loops
 import Data.List (sortOn)
 import System.Random.Mersenne.Pure64
+import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
 
 import Text.Printf
@@ -38,7 +39,7 @@ pingServer = do
     MsgWork from (i,wID,start,step) <- expect
     let img = renderIxs grids world start step
     send from (MsgImg mypid (i,wID,img))
-    say $ printf "completed %d(%d-%d)" wID start step
+    say $ printf "completed %d(%d-%d)" wID start (start + step)
 
 remotable ['pingServer]
 
@@ -127,13 +128,15 @@ sendAll :: ProcessId
 sendAll mypid todo ntodo nsent ready ps = do
   numsent0 <- liftIO $ C.readMVar nsent
   say $ printf "ntodo %d nsent %d" ntodo numsent0
+  status <- liftIO (U.freeze ready)
+  say $ printf "status: %s" (show status)
   forM_ (zip [0..] ps) $ \(i,pid) -> do
     numsent <- liftIO $ C.readMVar nsent
     idle <- liftIO $ MU.read ready i
     when (idle && numsent < ntodo) $ do
-      (wID,(start,stop)) <- liftIO $ C.readChan todo
-      say $ printf "sending %d(%d-%d) to %s" wID start stop (show pid)
-      send pid (MsgWork mypid (i,wID,start,stop))
+      (wID,(start,step)) <- liftIO $ C.readChan todo
+      say $ printf "sending %d(%d-%d) to %s" wID start (start + step) (show pid)
+      send pid (MsgWork mypid (i,wID,start,step))
       liftIO $ incMVar nsent
       liftIO $ MU.write ready i False
 
