@@ -154,7 +154,7 @@ bench3World = configToWorld bench3Config bench3Objects bench3Lights
 
 --depth of field example
 bench4Config :: Config
-bench4Config = Config 800 600 800 --3200 1800 --800 600
+bench4Config = Config 800 600 8 --3200 1800 --800 600
                       8 6 7 --16 9 10 --8 6 7
                       6 --10 --6 --10 --6
                       25 --400 --64

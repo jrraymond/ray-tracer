@@ -5,6 +5,7 @@ import Control.Exception
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString.Lazy as BL
 import Data.Int (Int64)
+import Data.Word (Word32)
 import Data.Binary (Binary,encode,decode)
 import Data.Typeable
 import Network.Socket
@@ -17,13 +18,14 @@ data XmitException = LengthException String
 
 instance Exception XmitException
 
-newtype MsgLen = MsgLen Int64 deriving (Read,Show,Eq)
+newtype MsgLen = MsgLen Word32 deriving (Read,Show,Eq)
 
 maxLen :: Int64
 maxLen = 0x0FFFFFFFF
 
+
 lenLen :: Int64
-lenLen = 8
+lenLen = 4
 
 msgLenEOT :: MsgLen
 msgLenEOT = MsgLen 0
@@ -33,14 +35,14 @@ isLenEOT = (== 0)
 
 validateMsgLen :: Int64 -> Maybe MsgLen
 validateMsgLen len
-  | len <= maxLen && len > 0 = Just . MsgLen $ len
+  | len <= maxLen && len > 0 = Just . MsgLen . fromIntegral $ len
   | otherwise = Nothing
 
 encodeLen :: MsgLen -> ByteString
 encodeLen (MsgLen w) = encode w
 
 decodeLen :: ByteString -> Int64
-decodeLen bs = assert (BL.length bs == lenLen) $ decode bs
+decodeLen bs = assert (BL.length bs == lenLen) $ fromIntegral (decode bs :: Word32)
 
 sendMsg :: (Show a, Binary a) => Socket -> a -> IO (Int64,Int64)
 sendMsg skt myData =
@@ -49,6 +51,8 @@ sendMsg skt myData =
   in case validateMsgLen len of
        Nothing -> throwIO (LengthException "msg len out of range")
        Just msgLen -> do
+         print $ "send: " ++ show (len :: Int64,msgLen :: MsgLen)
+         print (encodeLen msgLen)
          bs0 <- NSBS.send skt (encodeLen msgLen)
          bytes <- NSBS.send skt bsMsg
          when (bytes /= len) $
@@ -74,7 +78,9 @@ withAccept skt =
 recMsg :: (Show a, Binary a) => Socket -> IO (Maybe a)
 recMsg skt = do
   lenmsg <- NSBS.recv skt lenLen
+  print lenmsg
   let len = decodeLen lenmsg
+  print $ "rec: " ++ show (len :: Int64, fromIntegral len :: Word32)
   if isLenEOT len
     then return Nothing
     else do

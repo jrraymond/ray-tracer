@@ -27,15 +27,15 @@ masterMain _ = withSocketsDo $ do
   logH <- fileHandler "master.log" INFO >>= \lh -> return $
           setFormatter lh (simpleLogFormatter "[$time : $prio] $msg")
   updateGlobalLogger rootLoggerName (setLevel INFO . addHandler logH)
-  let c = bench6Config
+  let c = bench4Config
   objs <- case cScene c of
             Nothing -> return []
             Just fname -> do ms <- parseObj fname
                              case ms of
                                Left e -> error (show e)
                                Right mesh -> return $ fromMesh (convertMesh mesh)
-  let w = bench6World objs
-   -- w = bench4World
+  --let w = bench6World objs
+  let w = bench4World
       pSteps = getSteps (cImageWidth c) (cImageHeight c) (cChunks c)
   sock <- socket AF_INET Stream 0
   setSocketOption sock ReuseAddr 1

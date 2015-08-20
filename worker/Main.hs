@@ -60,9 +60,11 @@ runConn :: Socket -> IO ()
 runConn skt = do
   infoM rootLoggerName "waiting for world"
   worldM <- recMsg skt
+  print worldM
   case worldM of
     Nothing -> throwIO (UnexpectedEnd "world was Nothing")
     Just world -> do
+      infoM rootLoggerName "received world"
       rng <- newPureMT
       let grids = generateGrids rng (round (wImgWd world) + 10) (wAntiAliasing world)
       forever $ do
