@@ -7,6 +7,8 @@ import BoundingVolumeHierarchy
 import Types
 
 import Control.Arrow (first)
+import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as U
 import GHC.Float (double2Float)
 import System.Random (next)
 import System.Random.Mersenne.Pure64 (PureMT, randomDouble)
@@ -15,12 +17,13 @@ import System.Random.Shuffle (shuffle')
 
 
 {- jittered grids, world -}
-render :: PureMT -> World -> [Color]
+render :: PureMT -> World -> U.Vector Color
 render rng w = cs where
   grids = generateGrids rng (round (wImgWd w) + 10) (wAntiAliasing w)
-  ps = [ Point (i,j) | j <- reverse [0..wImgHt w - 1] , i <- [0..wImgWd w - 1] ]
+  ps = U.fromList [ Point (i,j) | j <- reverse [0..wImgHt w - 1]
+                                , i <- [0..wImgWd w - 1] ]
   --ps = toIndices (round (wImgWd w)) (round (wImgHt w)) 16
-  cs = map (colorPixel w) (zip ps grids)
+  cs = U.imap (colorPixel w grids) ps
   --cs = withStrategy (parBuffer 1000 rdeepseq) $ map (raytrace world (maxDepth world) . getRay world) ps
   --cs = map (colorPacket world . getRayPacket world) (zip ps grids)
 
@@ -44,10 +47,12 @@ fromIx wd ht x ix =
 {-# INLINE fromIx #-}
 
 --TODO clean up zipping and unzipping
-colorPixel :: World -> (Point,[F6]) -> Color
-colorPixel w (Point (i,j),grids) = avgColors cs where
+colorPixel :: World -> V.Vector (U.Vector F6) -> Int -> Point -> Color
+colorPixel w grids ix (Point (i,j)) = avgColors cs where
   d = wMaxDepth w
-  cs = map (\(F6 p q r0 r1 s0 s1) -> raytrace w d s0 s1 (getRay w (Point (i+p,j+q)) r0 r1)) grids
+  cs = U.map (\(F6 p q r0 r1 s0 s1) ->
+                raytrace w d s0 s1 (getRay w (Point (i+p,j+q)) r0 r1))
+             (grids V.! (ix `mod` V.length grids))
 {-# INLINE colorPixel #-}
 
 
@@ -459,8 +464,8 @@ orthonormal w = let t | w == Vec3 1 0 0 = Vec3 0 1 0
 {-# INLINE orthonormal #-}
 
 {- random number generator, cycle size, the dimension of the grid -}
-generateGrids :: PureMT -> Int -> Int -> [[F6]]
-generateGrids rng num aa = cycle grids where
+generateGrids :: PureMT -> Int -> Int -> V.Vector (U.Vector F6)
+generateGrids rng num aa = V.fromList (map U.fromList grids) where
   rngs = iterate (snd . System.Random.next) rng
   rrs = chunksOf (2 * aa * aa) (randomFloats rng)
   grids = take num (zipWith (\gen rs -> uncurry3 (zipWith3 ptsToF6) (getGrids aa gen rs)) rngs rrs)

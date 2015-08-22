@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import BenchmarkScene
@@ -13,8 +14,12 @@ import HaObj
 import Types
 import Convert
 
-import System.Random.Mersenne.Pure64 (newPureMT)
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
+import qualified Data.Vector.Unboxed as U
 import Options.Applicative
+import System.IO (withFile,IOMode(..))
+import System.Random.Mersenne.Pure64 (newPureMT)
 
 {- 
 - TODO scene file parsing
@@ -125,17 +130,17 @@ getCam e lat up = (u,v,w) where
   u = normalize $ up `cross` w
   v =  w `cross` u
   
-writePPM :: String -> Int -> Int -> [Color] -> IO ()
-writePPM name w h pixels = writeFile name txt  where
-  toTxt :: Float -> String
-  toTxt = (++ " ") . show . (truncate :: Float -> Int) . (255*) . clamp
-  {-# INLINE toTxt #-}
-  f :: [Color] -> String
-  f [] = ""
-  f (Vec3 r g b:ps) = toTxt r ++ toTxt g ++ toTxt b ++ f ps
-  {-# INLINE f #-}
-  txt = "P3\n" ++ show w ++ " " ++ show h ++
-        " 255\n" ++ f pixels
+writePPM :: String -> Int -> Int -> U.Vector Color -> IO ()
+writePPM name wd ht pixels = withFile name WriteMode $ \h -> do
+  T.hPutStr h headerTxt
+  U.mapM_ (T.hPutStr h . vecToTxt) pixels
+  where
+    floatToTxt :: Float -> T.Text
+    floatToTxt = (<> " ") . T.pack . show .
+                 (truncate :: Float -> Int) . (255*) . clamp
+    vecToTxt :: Vec3 -> T.Text
+    vecToTxt (Vec3 r g b) = floatToTxt r <> floatToTxt g <> floatToTxt b
+    headerTxt = "P3\n" <> T.pack (show wd) <> " " <> T.pack (show ht) <> " 255\n"
 
 {- for using the repl -}
 scene1C :: Config
@@ -223,7 +228,7 @@ bench5World = configToWorld bench5Config bench5Objects bench5Lights
 
 --scene parsing example
 bench6Config :: Config
-bench6Config = Config 800 600
+bench6Config = Config 200 150
                       8 6 10
                       6
                       4

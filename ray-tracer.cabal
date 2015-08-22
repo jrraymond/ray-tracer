@@ -40,9 +40,9 @@ executable ray-tracer
                      , random-shuffle
                      , mersenne-random-pure64
                      , vector
-                     , vector-th-unbox
                      , criterion
                      , distributed-process
+                     , text
           
   hs-source-dirs:      src
   default-language:    Haskell2010

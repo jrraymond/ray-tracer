@@ -223,6 +223,32 @@ instance G.Vector Vector F4 where
     [a,b,c,d] <- mapM (G.basicUnsafeIndexM v) [4*n,4*n+1,4*n+2,4*n+3]
     return $ F4 (a,b,c,d) 
 
+{- for vectors of six floats -}
+newtype instance MVector s F6 = MV_F6 (MVector s Float)
+newtype instance Vector F6 = V_F6 (Vector Float)
+instance Unbox F6
+
+instance M.MVector MVector F6 where 
+  basicLength (MV_F6 v) = M.basicLength v `div` 6 
+  basicUnsafeSlice a b (MV_F6 v) = MV_F6 $ M.basicUnsafeSlice (a*6) (b*6) v 
+  basicOverlaps (MV_F6 v0) (MV_F6 v1) = M.basicOverlaps v0 v1 
+  basicUnsafeNew n = liftM MV_F6 (M.basicUnsafeNew (6*n))
+  basicUnsafeRead (MV_F6 v) n = do 
+    [a,b,c,d,e,f] <- mapM (M.basicUnsafeRead v) [6*n,6*n+1,6*n+2,6*n+3,6*n+4,6*n+5]
+    return $ F6 a b c d e f
+  basicUnsafeWrite (MV_F6 v) n (F6 a b c d e f) =
+    zipWithM_ (M.basicUnsafeWrite v) [6*n,6*n+1,6*n+2,6*n+3,6*n+4,6*n+5] [a,b,c,d,e,f]
+
+instance G.Vector Vector F6 where 
+  basicUnsafeFreeze (MV_F6 v) = liftM V_F6 (G.basicUnsafeFreeze v)
+  basicUnsafeThaw (V_F6 v) = liftM MV_F6 (G.basicUnsafeThaw v)
+  basicLength (V_F6 v) = G.basicLength v `div` 6
+  basicUnsafeSlice a b (V_F6 v) = V_F6 $ G.basicUnsafeSlice (a*6) (b*6) v
+  basicUnsafeIndexM (V_F6 v) n = do 
+    [a,b,c,d,e,f] <- mapM (G.basicUnsafeIndexM v) [6*n,6*n+1,6*n+2,6*n+3,6*n+4,6*n+5]
+    return $ F6 a b c d e f 
+
+
 {- for vectors of three ints -}
 newtype instance MVector s Vertex = MV_Vertex (MVector s Int)
 newtype instance Vector Vertex = V_Vertex (Vector Int)
