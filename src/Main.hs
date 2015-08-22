@@ -114,7 +114,7 @@ configToWorld c objs lights =
           , wEye = cEye c
           , wCamera = getCam (cEye c) (cLookAt c) (cUp c)
           , wObjects = sahBVH objs
-          , wAmbient = Color 0.1 0.1 0.1
+          , wAmbient = Vec3 0.1 0.1 0.1
           , wLights = lights
           , wMaxDepth = cReflectionDepth c
           }
@@ -132,7 +132,7 @@ writePPM name w h pixels = writeFile name txt  where
   {-# INLINE toTxt #-}
   f :: [Color] -> String
   f [] = ""
-  f (Color r g b:ps) = toTxt r ++ toTxt g ++ toTxt b ++ f ps
+  f (Vec3 r g b:ps) = toTxt r ++ toTxt g ++ toTxt b ++ f ps
   {-# INLINE f #-}
   txt = "P3\n" ++ show w ++ " " ++ show h ++
         " 255\n" ++ f pixels
@@ -223,8 +223,8 @@ bench5World = configToWorld bench5Config bench5Objects bench5Lights
 
 --scene parsing example
 bench6Config :: Config
-bench6Config = Config 80 60 
-                      8 6 8
+bench6Config = Config 800 600
+                      8 6 10
                       6
                       4
                       0.0
@@ -236,11 +236,11 @@ bench6Config = Config 80 60
 
 bench6World :: [Object] -> World
 bench6World objs = configToWorld bench6Config objs
-                    [Light (Vec3 10 20 0) (Vec3 0 0 0) (Vec3 0 0 0) (Color 0.5 0.5 0.5)
-                    ,Light (Vec3 (-10) 20 0) (Vec3 0 0 0) (Vec3 0 0 0) (Color 0.5 0.5 0.5)
-                    ,Light (Vec3 0 20 10) (Vec3 0 0 0) (Vec3 0 0 0) (Color 0.5 0.5 0.5)
-                    ,Light (Vec3 0 20 (-10)) (Vec3 0 0 0) (Vec3 0 0 0) (Color 0.5 0.5 0.5)
-                    ,Light (Vec3 0 (-20) 10) (Vec3 0 0 0) (Vec3 0 0 0) (Color 0.5 0.5 0.5)
-                    ,Light (Vec3 0 (-20) (-10)) (Vec3 0 0 0) (Vec3 0 0 0) (Color 0.5 0.5 0.5)
-                    ,Light (Vec3 10 (-20) 0) (Vec3 0 0 0) (Vec3 0 0 0) (Color 0.5 0.5 0.5)
-                    ,Light (Vec3 (-10) (-20) 0) (Vec3 0 0 0) (Vec3 0 0 0) (Color 0.5 0.5 0.5)]
+                    [Light (Vec3 10 20 0) (Vec3 0 0 0) (Vec3 0 0 0) (Vec3 0.5 0.5 0.5)
+                    ,Light (Vec3 (-10) 20 0) (Vec3 0 0 0) (Vec3 0 0 0) (Vec3 0.5 0.5 0.5)
+                    ,Light (Vec3 0 20 10) (Vec3 0 0 0) (Vec3 0 0 0) (Vec3 0.5 0.5 0.5)
+                    ,Light (Vec3 0 20 (-10)) (Vec3 0 0 0) (Vec3 0 0 0) (Vec3 0.5 0.5 0.5)
+                    ,Light (Vec3 0 (-20) 10) (Vec3 0 0 0) (Vec3 0 0 0) (Vec3 0.5 0.5 0.5)
+                    ,Light (Vec3 0 (-20) (-10)) (Vec3 0 0 0) (Vec3 0 0 0) (Vec3 0.5 0.5 0.5)
+                    ,Light (Vec3 10 (-20) 0) (Vec3 0 0 0) (Vec3 0 0 0) (Vec3 0.5 0.5 0.5)
+                    ,Light (Vec3 (-10) (-20) 0) (Vec3 0 0 0) (Vec3 0 0 0) (Vec3 0.5 0.5 0.5)]

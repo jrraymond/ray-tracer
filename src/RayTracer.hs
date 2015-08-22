@@ -18,7 +18,7 @@ import System.Random.Shuffle (shuffle')
 render :: PureMT -> World -> [Color]
 render rng w = cs where
   grids = generateGrids rng (round (wImgWd w) + 10) (wAntiAliasing w)
-  ps = [ (i,j) | j <- reverse [0..wImgHt w - 1] , i <- [0..wImgWd w - 1] ]
+  ps = [ Point (i,j) | j <- reverse [0..wImgHt w - 1] , i <- [0..wImgWd w - 1] ]
   --ps = toIndices (round (wImgWd w)) (round (wImgHt w)) 16
   cs = map (colorPixel w) (zip ps grids)
   --cs = withStrategy (parBuffer 1000 rdeepseq) $ map (raytrace world (maxDepth world) . getRay world) ps
@@ -45,20 +45,20 @@ fromIx wd ht x ix =
 
 --TODO clean up zipping and unzipping
 colorPixel :: World -> (Point,[F6]) -> Color
-colorPixel w ((i,j),grids) = avgColors cs where
+colorPixel w (Point (i,j),grids) = avgColors cs where
   d = wMaxDepth w
-  cs = map (\(F6 p q r0 r1 s0 s1) -> raytrace w d s0 s1 (getRay w (i+p,j+q) r0 r1)) grids
+  cs = map (\(F6 p q r0 r1 s0 s1) -> raytrace w d s0 s1 (getRay w (Point (i+p,j+q)) r0 r1)) grids
 {-# INLINE colorPixel #-}
 
 
 {- TODO use continuations with hitBVH -}
 raytrace :: World -> Int -> Float -> Float -> Ray3 -> Color
-raytrace _ 0 _ _ _ = Color 0 0 0
+raytrace _ 0 _ _ _ = Vec3 0 0 0
 raytrace world depth s0 s1 (Ray3 (base,dir)) = clr where
   objs = wObjects world
   ambient_c = wAmbient world
   clr = case hitBVH (Ray3 (base,dir)) objs of
-          Nothing -> Color 0 0 0
+          Nothing -> Vec3 0 0 0
           Just (HitRec (t,obj)) ->
             let pt = add base (multiply dir t)
                 n = getNormal obj pt
@@ -134,7 +134,7 @@ getIndirectColor w depth s0 s1 dir pt normal obj
     dn = dot dir normal
     (c,k,t) 
       | dn < 0 = let c' = negate dn
-                     k' = Color 1 1 1
+                     k' = Vec3 1 1 1
                      t'= refract dir normal nt
                  in (c',k',t')
       | otherwise = let t' = refract dir (multiply normal (-1)) (1 / nt)
@@ -181,7 +181,7 @@ refract dir normal nt
 
 {- world, point on view plane, base perturbations -}
 getRay :: World -> Point -> Float -> Float -> Ray3
-getRay world (i,j) r1 r2 = ray where
+getRay world (Point (i,j)) r1 r2 = ray where
   lens = wLens world
   eye = wEye world
   (u,v,w) = wCamera world
@@ -208,7 +208,7 @@ getRay world (i,j) r1 r2 = ray where
 getGrid :: Int -> Grid
 getGrid n = 
   let n' = fromIntegral n
-  in [ ((p + 0.5) / n', (q + 0.5) / n') | p <- [0..n'-1] , q <- [0..n'-1] ]
+  in [ Point ((p + 0.5) / n', (q + 0.5) / n') | p <- [0..n'-1] , q <- [0..n'-1] ]
 {-# INLINE getGrid #-}
 
 {- dimension of grid, list of random floats [0,1] -}
@@ -218,7 +218,7 @@ getGridR n rs = pts where
   (irs,jrs) = splitAt nn rs
   n' = fromIntegral n
   grid = [ (p,q) | p <- [0..n'-1], q <- [0..n'-1] ]
-  pts = zipWith (\(p,q) (ir,jr) -> ((p+ir)/n',(q+jr)/n')) grid (zip irs jrs)
+  pts = zipWith (\(p,q) (ir,jr) -> Point ((p+ir)/n',(q+jr)/n')) grid (zip irs jrs)
 {-# INLINE getGridR #-}
 
 chunksOf :: Int -> [a] -> [[a]]
@@ -444,7 +444,7 @@ partitionTraversal = undefined
     
 
 badColor :: Color -> Bool
-badColor (Color r g b) = any isNaN [r,g,b]
+badColor (Vec3 r g b) = any isNaN [r,g,b]
 
 badVec :: Vec3 -> Bool
 badVec (Vec3 x y z) = any isNaN [x,y,z]
@@ -464,7 +464,7 @@ generateGrids rng num aa = cycle grids where
   rngs = iterate (snd . System.Random.next) rng
   rrs = chunksOf (2 * aa * aa) (randomFloats rng)
   grids = take num (zipWith (\gen rs -> uncurry3 (zipWith3 ptsToF6) (getGrids aa gen rs)) rngs rrs)
-  ptsToF6 (a,b) (c,d) (e,f) = F6 a b c d e f
+  ptsToF6 (Point (a,b)) (Point (c,d)) (Point (e,f)) = F6 a b c d e f
 
 
 {- n x n grid and shuffled grids for depth of field and soft shadows -}

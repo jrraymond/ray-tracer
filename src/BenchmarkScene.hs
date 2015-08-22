@@ -8,7 +8,7 @@ bench1Lights :: [Light]
 bench1Lights = [Light (Vec3 10 10 20)
                      (Vec3 5 0 0)
                      (Vec3 0 5 0)
-                     (Color 0.5 0.5 0.5) ]
+                     (Vec3 0.5 0.5 0.5) ]
 
 
 t0a :: Vec3

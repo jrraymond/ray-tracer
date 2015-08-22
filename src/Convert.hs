@@ -68,9 +68,9 @@ convertMaterial m =
     10 -> makeMaterial dC sC phong 0    0 xx
     i  -> error ("invalid illum value " ++ show i)
   where
-    xx = Color 0 0 0
-    white = Color 1 1 1
-    opaque = Color 99 99 99
+    xx = Vec3 0 0 0
+    white = Vec3 1 1 1
+    opaque = Vec3 99 99 99
     im = mIllum m
     dC = convertColor (mKd m)
     sC = convertColor (mKs m)
@@ -90,5 +90,5 @@ convertMaterial m =
 -}
 
 convertColor :: V3 -> Color
-convertColor (V3 r g b) = Color r g b
+convertColor (V3 r g b) = Vec3 r g b
 

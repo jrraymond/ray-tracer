@@ -8,7 +8,7 @@ bench3Lights :: [Light]
 bench3Lights = [Light (Vec3 25 0 25)
                      (Vec3 1 0 0)
                      (Vec3 0 1 0)
-                     (Color 0.5 0.5 0.5) ]
+                     (Vec3 0.5 0.5 0.5) ]
 bt0 :: Vec3
 bt0 = Vec3 (-5) (-20) 20
 bt1 :: Vec3
